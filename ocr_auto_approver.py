@@ -192,7 +192,7 @@ class OCRAutoApprover:
             except:
                 pass
 
-            time.sleep(0.3)
+            time.sleep(0.3)  # Window activation delay
 
             # Smart navigation with Alt + arrows, monitoring OCR changes
             VK_RIGHT = 0x27
@@ -201,6 +201,7 @@ class OCRAutoApprover:
             VK_RETURN = 0x0D  # Enter key
 
             # Capture initial screen
+            time.sleep(0.3)  # Wait for screen to stabilize
             initial_img = self.capture_window(hwnd)
             initial_text = self.extract_text_from_image(initial_img) if initial_img else ""
 
@@ -223,7 +224,7 @@ class OCRAutoApprover:
                 win32api.keybd_event(VK_RIGHT, 0, win32con.KEYEVENTF_KEYUP, 0)
                 time.sleep(0.05)
                 win32api.keybd_event(VK_MENU, 0, win32con.KEYEVENTF_KEYUP, 0)
-                time.sleep(0.2)
+                time.sleep(0.3)  # Wait for tab switch and screen update
 
                 test_img = self.capture_window(hwnd)
                 test_text = self.extract_text_from_image(test_img) if test_img else ""
@@ -253,7 +254,7 @@ class OCRAutoApprover:
                     win32api.keybd_event(VK_LEFT, 0, win32con.KEYEVENTF_KEYUP, 0)
                     time.sleep(0.05)
                     win32api.keybd_event(VK_MENU, 0, win32con.KEYEVENTF_KEYUP, 0)
-                    time.sleep(0.2)
+                    time.sleep(0.3)  # Wait for tab switch and screen update
 
                     test_img = self.capture_window(hwnd)
                     test_text = self.extract_text_from_image(test_img) if test_img else ""
@@ -288,7 +289,7 @@ class OCRAutoApprover:
                         win32api.keybd_event(direction_key, 0, win32con.KEYEVENTF_KEYUP, 0)
                         time.sleep(0.05)
                         win32api.keybd_event(VK_MENU, 0, win32con.KEYEVENTF_KEYUP, 0)
-                        time.sleep(0.2)
+                        time.sleep(0.3)  # Wait for tab switch and screen update
                         presses_count += 1
 
                         new_img = self.capture_window(hwnd)
@@ -326,7 +327,7 @@ class OCRAutoApprover:
                             win32api.keybd_event(opposite_key, 0, win32con.KEYEVENTF_KEYUP, 0)
                             time.sleep(0.05)
                             win32api.keybd_event(VK_MENU, 0, win32con.KEYEVENTF_KEYUP, 0)
-                            time.sleep(0.1)
+                            time.sleep(0.3)  # Wait for tab switch
 
                         print(f"[INFO] Now trying {opposite_name} direction...")
 
@@ -343,7 +344,7 @@ class OCRAutoApprover:
                             win32api.keybd_event(opposite_key, 0, win32con.KEYEVENTF_KEYUP, 0)
                             time.sleep(0.05)
                             win32api.keybd_event(VK_MENU, 0, win32con.KEYEVENTF_KEYUP, 0)
-                            time.sleep(0.2)
+                            time.sleep(0.3)  # Wait for tab switch and screen update
 
                             new_img = self.capture_window(hwnd)
                             new_text = self.extract_text_from_image(new_img) if new_img else ""
