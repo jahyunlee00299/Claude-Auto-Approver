@@ -96,9 +96,182 @@ def send_approval(hwnd, title):
         win32gui.SetForegroundWindow(hwnd)
         time.sleep(0.3)
 
-        win32api.keybd_event(ord('2'), 0, 0, 0)
-        time.sleep(0.05)
-        win32api.keybd_event(ord('2'), 0, win32con.KEYEVENTF_KEYUP, 0)
+        # Smart navigation with Alt + arrows, monitoring OCR changes
+        VK_RIGHT = 0x27
+        VK_LEFT = 0x25
+        VK_MENU = 0x12  # Alt key
+        VK_RETURN = 0x0D  # Enter key
+
+        # Capture initial screen
+        initial_img = capture_window(hwnd)
+        initial_text = pytesseract.image_to_string(initial_img, lang='eng') if initial_img else ""
+
+        # Check initial screen for target
+        if "don't ask again" in initial_text.lower() or "yes, and don" in initial_text.lower():
+            log(f"Found target on initial screen!")
+            win32api.keybd_event(VK_RETURN, 0, 0, 0)
+            time.sleep(0.05)
+            win32api.keybd_event(VK_RETURN, 0, win32con.KEYEVENTF_KEYUP, 0)
+        else:
+            # Determine navigation direction
+            direction_key = None
+            direction_name = ""
+
+            # Try Right first
+            win32api.keybd_event(VK_MENU, 0, 0, 0)
+            time.sleep(0.05)
+            win32api.keybd_event(VK_RIGHT, 0, 0, 0)
+            time.sleep(0.05)
+            win32api.keybd_event(VK_RIGHT, 0, win32con.KEYEVENTF_KEYUP, 0)
+            time.sleep(0.05)
+            win32api.keybd_event(VK_MENU, 0, win32con.KEYEVENTF_KEYUP, 0)
+            time.sleep(0.2)
+
+            test_img = capture_window(hwnd)
+            test_text = pytesseract.image_to_string(test_img, lang='eng') if test_img else ""
+
+            if test_text != initial_text:
+                # Right works!
+                direction_key = VK_RIGHT
+                direction_name = "Right"
+                log(f"Right navigation works, continuing...")
+
+                # Check if we found it
+                if "don't ask again" in test_text.lower() or "yes, and don" in test_text.lower():
+                    log(f"Found target after 1 Right!")
+                    win32api.keybd_event(VK_RETURN, 0, 0, 0)
+                    time.sleep(0.05)
+                    win32api.keybd_event(VK_RETURN, 0, win32con.KEYEVENTF_KEYUP, 0)
+                    direction_key = None
+                else:
+                    initial_text = test_text
+            else:
+                # Right didn't work, try Left
+                log(f"Right didn't work, trying Left...")
+                win32api.keybd_event(VK_MENU, 0, 0, 0)
+                time.sleep(0.05)
+                win32api.keybd_event(VK_LEFT, 0, 0, 0)
+                time.sleep(0.05)
+                win32api.keybd_event(VK_LEFT, 0, win32con.KEYEVENTF_KEYUP, 0)
+                time.sleep(0.05)
+                win32api.keybd_event(VK_MENU, 0, win32con.KEYEVENTF_KEYUP, 0)
+                time.sleep(0.2)
+
+                test_img = capture_window(hwnd)
+                test_text = pytesseract.image_to_string(test_img, lang='eng') if test_img else ""
+
+                if test_text != initial_text:
+                    # Left works!
+                    direction_key = VK_LEFT
+                    direction_name = "Left"
+                    log(f"Left navigation works, continuing...")
+
+                    # Check if we found it
+                    if "don't ask again" in test_text.lower() or "yes, and don" in test_text.lower():
+                        log(f"Found target after 1 Left!")
+                        win32api.keybd_event(VK_RETURN, 0, 0, 0)
+                        time.sleep(0.05)
+                        win32api.keybd_event(VK_RETURN, 0, win32con.KEYEVENTF_KEYUP, 0)
+                        direction_key = None
+                    else:
+                        initial_text = test_text
+
+            # Continue in determined direction
+            if direction_key:
+                found = False
+                presses_count = 1  # Already pressed once
+
+                for i in range(5):  # Max 5 more tries
+                    # Press Alt + direction
+                    win32api.keybd_event(VK_MENU, 0, 0, 0)
+                    time.sleep(0.05)
+                    win32api.keybd_event(direction_key, 0, 0, 0)
+                    time.sleep(0.05)
+                    win32api.keybd_event(direction_key, 0, win32con.KEYEVENTF_KEYUP, 0)
+                    time.sleep(0.05)
+                    win32api.keybd_event(VK_MENU, 0, win32con.KEYEVENTF_KEYUP, 0)
+                    time.sleep(0.2)
+                    presses_count += 1
+
+                    new_img = capture_window(hwnd)
+                    new_text = pytesseract.image_to_string(new_img, lang='eng') if new_img else ""
+
+                    # Check if we found the target
+                    if "don't ask again" in new_text.lower() or "yes, and don" in new_text.lower():
+                        log(f"Found target after {presses_count} {direction_name} presses!")
+                        win32api.keybd_event(VK_RETURN, 0, 0, 0)
+                        time.sleep(0.05)
+                        win32api.keybd_event(VK_RETURN, 0, win32con.KEYEVENTF_KEYUP, 0)
+                        found = True
+                        break
+
+                    # If content didn't change, reached the end
+                    if new_text == initial_text:
+                        log(f"Reached end in {direction_name} direction after {presses_count} presses")
+                        break
+
+                    initial_text = new_text
+
+                # If not found, go back to start and try opposite direction
+                if not found:
+                    log(f"Going back to start to try opposite direction...")
+
+                    # Go back by pressing opposite direction same number of times
+                    opposite_key = VK_LEFT if direction_key == VK_RIGHT else VK_RIGHT
+                    opposite_name = "Left" if direction_key == VK_RIGHT else "Right"
+
+                    for _ in range(presses_count):
+                        win32api.keybd_event(VK_MENU, 0, 0, 0)
+                        time.sleep(0.05)
+                        win32api.keybd_event(opposite_key, 0, 0, 0)
+                        time.sleep(0.05)
+                        win32api.keybd_event(opposite_key, 0, win32con.KEYEVENTF_KEYUP, 0)
+                        time.sleep(0.05)
+                        win32api.keybd_event(VK_MENU, 0, win32con.KEYEVENTF_KEYUP, 0)
+                        time.sleep(0.1)
+
+                    log(f"Now trying {opposite_name} direction...")
+
+                    # Capture initial again
+                    initial_img = capture_window(hwnd)
+                    initial_text = pytesseract.image_to_string(initial_img, lang='eng') if initial_img else ""
+
+                    # Try opposite direction
+                    for i in range(6):
+                        win32api.keybd_event(VK_MENU, 0, 0, 0)
+                        time.sleep(0.05)
+                        win32api.keybd_event(opposite_key, 0, 0, 0)
+                        time.sleep(0.05)
+                        win32api.keybd_event(opposite_key, 0, win32con.KEYEVENTF_KEYUP, 0)
+                        time.sleep(0.05)
+                        win32api.keybd_event(VK_MENU, 0, win32con.KEYEVENTF_KEYUP, 0)
+                        time.sleep(0.2)
+
+                        new_img = capture_window(hwnd)
+                        new_text = pytesseract.image_to_string(new_img, lang='eng') if new_img else ""
+
+                        # Check if we found the target
+                        if "don't ask again" in new_text.lower() or "yes, and don" in new_text.lower():
+                            log(f"Found target after {i+1} {opposite_name} presses!")
+                            win32api.keybd_event(VK_RETURN, 0, 0, 0)
+                            time.sleep(0.05)
+                            win32api.keybd_event(VK_RETURN, 0, win32con.KEYEVENTF_KEYUP, 0)
+                            found = True
+                            break
+
+                        # If content didn't change, reached the end
+                        if new_text == initial_text:
+                            log(f"Reached end in {opposite_name} direction, no more options")
+                            break
+
+                        initial_text = new_text
+
+                    # Still not found, fallback
+                    if not found:
+                        log(f"Exhausted both directions, sending '2' as fallback")
+                        win32api.keybd_event(ord('2'), 0, 0, 0)
+                        time.sleep(0.05)
+                        win32api.keybd_event(ord('2'), 0, win32con.KEYEVENTF_KEYUP, 0)
 
         approval_count += 1
         last_approval[hwnd] = time.time()
