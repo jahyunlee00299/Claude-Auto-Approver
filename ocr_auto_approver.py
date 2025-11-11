@@ -232,9 +232,12 @@ class OCRAutoApprover:
         return True
 
     def send_approval(self, hwnd, window_title):
-        """Send '1' input to window (no Enter)"""
+        """Send '2' to window and show notification"""
+        print(f"[INFO] send_approval called for window: {window_title[:50]}")
+
         try:
             # Show Windows notification with image
+            print(f"[INFO] Creating notification...")
             try:
                 # Get the icon path
                 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -264,15 +267,17 @@ class OCRAutoApprover:
                     app_id="Claude Auto Approver",
                     title="AUTO APPROVING",
                     msg=f"Window: {window_type}\nTarget: {window_title[:40]}",
-                    duration="short",  # Changed to short so it auto-dismisses
+                    duration="long",  # Long duration for visibility
                     icon=icon_path
                 )
 
                 toast.set_audio(audio.Default, loop=False)
+
+                print(f"[INFO] Showing notification now...")
                 toast.show()
 
                 safe_window_type = window_type.encode('ascii', 'ignore').decode('ascii')
-                print(f"[INFO] Notification shown for window type: {safe_window_type}")
+                print(f"[SUCCESS] Notification displayed for window type: {safe_window_type}")
             except Exception as e:
                 print(f"[WARNING] Notification failed: {e}")
                 import traceback
@@ -336,6 +341,18 @@ class OCRAutoApprover:
                     hwnd = window['hwnd']
                     title = window['title']
 
+                    # Quick detection: if window title contains "Question", assume it's approval dialog
+                    if 'question' in title.lower():
+                        print(f"\n[QUICK-DETECT] Found Question window: {title}")
+
+                        if self.should_approve(hwnd):
+                            print(f"[ACTION] Sending approval and showing notification...")
+                            self.send_approval(hwnd, title)
+                        else:
+                            print(f"[SKIP] Too soon to approve again (within {self.min_approval_interval}s)")
+                        continue
+
+                    # Fallback: OCR detection for other windows
                     # Capture window
                     img = self.capture_window(hwnd)
                     if not img:
@@ -343,11 +360,6 @@ class OCRAutoApprover:
 
                     # OCR text extraction
                     text = self.extract_text_from_image(img)
-
-                    # Debug: Show what OCR detected (only if Question window)
-                    if 'question' in title.lower():
-                        print(f"\n[DEBUG] OCR from '{title}':")
-                        print(f"  Text: {text[:200]}")  # First 200 chars
 
                     # Check approval pattern
                     if self.check_approval_pattern(text):
@@ -359,7 +371,10 @@ class OCRAutoApprover:
                             except:
                                 print(f"\n[DETECTED] Approval request detected")
 
+                            print(f"[ACTION] Sending approval and showing notification...")
                             self.send_approval(hwnd, title)
+                        else:
+                            print(f"[SKIP] Too soon to approve again (within {self.min_approval_interval}s)")
 
                 time.sleep(3)  # OCR is slow, check every 3 seconds
 
