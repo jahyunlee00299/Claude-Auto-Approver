@@ -114,7 +114,7 @@ class OCRAutoApprover:
 
         # Duplicate prevention - track per window
         self.last_approval_per_window = {}
-        self.min_approval_interval = 10  # Auto-approve once per 10 seconds per window
+        self.min_approval_interval = 3  # Auto-approve once per 3 seconds per window
 
         # Current window
         try:
@@ -274,10 +274,16 @@ class OCRAutoApprover:
                 toast.set_audio(audio.Default, loop=False)
 
                 print(f"[INFO] Showing notification now...")
-                toast.show()
+
+                # Try to show notification multiple times if needed
+                try:
+                    toast.show()
+                    time.sleep(0.1)  # Small delay to ensure it's sent
+                except:
+                    pass
 
                 safe_window_type = window_type.encode('ascii', 'ignore').decode('ascii')
-                print(f"[SUCCESS] Notification displayed for window type: {safe_window_type}")
+                print(f"[SUCCESS] Notification sent for window type: {safe_window_type}")
             except Exception as e:
                 print(f"[WARNING] Notification failed: {e}")
                 import traceback
@@ -347,7 +353,6 @@ class OCRAutoApprover:
 
                     if any(keyword in title_lower for keyword in quick_detect_keywords):
                         print(f"\n[QUICK-DETECT] Found approval window: {title}")
-
                         if self.should_approve(hwnd):
                             print(f"[ACTION] Sending approval and showing notification...")
                             self.send_approval(hwnd, title)
@@ -367,7 +372,6 @@ class OCRAutoApprover:
 
                     # Check approval pattern
                     if self.check_approval_pattern(text):
-                        # Check if should approve
                         if self.should_approve(hwnd):
                             try:
                                 safe_title = title.encode('ascii', 'ignore').decode('ascii')
@@ -381,7 +385,8 @@ class OCRAutoApprover:
                         else:
                             print(f"[SKIP] Too soon to approve again (within {self.min_approval_interval}s)")
 
-                time.sleep(3)  # OCR is slow, check every 3 seconds
+                # Sleep once after checking all windows (not per window)
+                time.sleep(3)
 
             except Exception as e:
                 print(f"[ERROR] Monitoring error: {e}")
