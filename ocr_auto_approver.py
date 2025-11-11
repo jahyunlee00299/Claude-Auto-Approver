@@ -15,78 +15,12 @@ from PIL import Image
 import pytesseract
 import io
 from winotify import Notification, audio
-import tkinter as tk
 import os
 
 # No UTF-8 configuration - use ASCII only for output to avoid encoding issues
 
 # Tesseract path
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
-
-
-def show_screen_alert(message, duration=2):
-    """Show a translucent alert at the top center of the screen"""
-    def create_alert():
-        root = tk.Tk()
-        root.withdraw()  # Hide main window
-
-        # Create alert window
-        alert = tk.Toplevel(root)
-        alert.overrideredirect(True)  # Remove window decorations
-
-        # Force always on top with multiple methods
-        alert.attributes('-topmost', True)
-        alert.attributes('-alpha', 0.95)  # Translucent
-        alert.lift()  # Raise to top
-        alert.focus_force()  # Force focus
-
-        # Get screen dimensions
-        screen_width = alert.winfo_screenwidth()
-
-        # Create label
-        label = tk.Label(
-            alert,
-            text=message,
-            font=('Arial', 11, 'bold'),
-            bg='#FF5722',  # Orange-red background
-            fg='white',
-            padx=15,
-            pady=8
-        )
-        label.pack()
-
-        # Update to get actual size
-        alert.update_idletasks()
-
-        # Position at top center
-        width = alert.winfo_width()
-        x = (screen_width - width) // 2
-        y = 50  # 50 pixels from top
-        alert.geometry(f'+{x}+{y}')
-
-        # Keep forcing topmost
-        def keep_on_top():
-            try:
-                alert.lift()
-                alert.attributes('-topmost', True)
-            except:
-                pass
-
-        # Refresh topmost status every 100ms
-        def refresh_topmost():
-            keep_on_top()
-            if alert.winfo_exists():
-                alert.after(100, refresh_topmost)
-
-        refresh_topmost()
-
-        # Auto-close after duration
-        alert.after(int(duration * 1000), lambda: (root.quit(), root.destroy()))
-        root.mainloop()
-
-    # Run in separate thread to avoid blocking
-    thread = threading.Thread(target=create_alert, daemon=True)
-    thread.start()
 
 
 class OCRAutoApprover:
@@ -233,59 +167,60 @@ class OCRAutoApprover:
 
     def send_approval(self, hwnd, window_title):
         """Send '2' to window and show notification"""
+        # Print big approval message that can be easily seen
+        print("\n" + "="*70)
+        print("APPROVAL DETECTED".center(70))
+        print(f"Window: {window_title[:60]}".center(70))
+        print("Action: Sending '2' (Yes, and don't ask again)".center(70))
+        print("="*70 + "\n")
+
         print(f"[INFO] send_approval called for window: {window_title[:50]}")
 
         try:
-            # Show Windows notification with image
-            print(f"[INFO] Creating notification...")
-            try:
-                # Get the icon path
-                script_dir = os.path.dirname(os.path.abspath(__file__))
-                icon_path = os.path.join(script_dir, 'approval_icon.png')
+            # Show Windows notification using winotify
+            print(f"[INFO] Creating Windows notification...")
 
-                # Determine window type/terminal
-                window_type = "Unknown"
-                title_lower = window_title.lower()
-                if 'powershell' in title_lower:
-                    window_type = "PowerShell"
-                elif 'cmd' in title_lower or 'command' in title_lower:
-                    window_type = "CMD"
-                elif 'bash' in title_lower or 'mingw' in title_lower:
-                    window_type = "Bash/Git"
-                elif 'python' in title_lower:
-                    window_type = "Python"
-                elif 'question' in title_lower:
-                    window_type = "Dialog"
+            # Determine window type
+            window_type = "Unknown"
+            title_lower = window_title.lower()
+            if 'powershell' in title_lower:
+                window_type = "PowerShell"
+            elif 'cmd' in title_lower or 'command' in title_lower:
+                window_type = "CMD"
+            elif 'bash' in title_lower or 'mingw' in title_lower:
+                window_type = "Bash/Git"
+            elif 'python' in title_lower:
+                window_type = "Python"
+            elif 'question' in title_lower:
+                window_type = "Dialog"
+            else:
+                if ' - ' in window_title:
+                    window_type = window_title.split(' - ')[-1][:20]
                 else:
-                    # Try to extract app name from title
-                    if ' - ' in window_title:
-                        window_type = window_title.split(' - ')[-1][:20]
-                    else:
-                        window_type = window_title[:20]
+                    window_type = window_title[:20]
 
+            # Show Windows notification
+            try:
+                # Get absolute path to icon
+                icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "approval_icon.png")
+
+                # Create notification
                 toast = Notification(
                     app_id="Claude Auto Approver",
-                    title="AUTO APPROVING",
-                    msg=f"Window: {window_type}\nTarget: {window_title[:40]}",
+                    title="Auto Approval Sent",
+                    msg=f"Window: {window_type}",
                     duration="short",
-                    icon=icon_path
+                    icon=icon_path if os.path.exists(icon_path) else ""
                 )
 
-                toast.set_audio(audio.Default, loop=False)
+                # Show notification
+                toast.show()
+                print(f"[SUCCESS] Windows notification shown for: {window_type}")
 
-                print(f"[INFO] Showing notification now...")
-
-                # Try to show notification multiple times if needed
-                try:
-                    toast.show()
-                    time.sleep(0.1)  # Small delay to ensure it's sent
-                except:
-                    pass
-
-                safe_window_type = window_type.encode('ascii', 'ignore').decode('ascii')
-                print(f"[SUCCESS] Notification sent for window type: {safe_window_type}")
+                # Give notification time to appear before continuing
+                time.sleep(0.5)
             except Exception as e:
-                print(f"[WARNING] Notification failed: {e}")
+                print(f"[WARNING] Windows notification failed: {e}")
                 import traceback
                 traceback.print_exc()
 
