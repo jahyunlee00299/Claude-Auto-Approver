@@ -5,7 +5,8 @@
       "Bash(nul)",
       "Bash(git commit:*)",
       "Bash(python test_window_titles.py:*)",
-      "Bash(python test_approval_dialog.py:*)"
+      "Bash(python test_approval_dialog.py:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []
