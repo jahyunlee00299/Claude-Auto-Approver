@@ -1,0 +1,15 @@
+#!/bin/bash
+# Auto-start OCR Auto Approver when Claude Code starts
+
+PROJECT_DIR="C:/Users/Jahyun/PycharmProjects/Claude-Auto-Approver"
+cd "$PROJECT_DIR"
+
+# Check if already running
+if pgrep -f "ocr_auto_simple.py" > /dev/null 2>&1; then
+    echo "OCR Auto Approver is already running"
+    exit 0
+fi
+
+# Start in background
+nohup python ocr_auto_simple.py > /dev/null 2>&1 &
+echo "OCR Auto Approver started (PID: $!)"

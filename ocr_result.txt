@@ -1,0 +1,48 @@
+iz)
+Ul
+
+Bei. 8 caud..v ein] Het v i a Q
+
+O zeae. Ms READMEmd
+
+o Ms CHANGELOG.md
+
+Mi CONTRIBUTINGmd @ Claude Code Usage Monitor
+83 Mt DEVELOPMENT.nd eke ho bed
+
+LICENSE
+
+Oo
+7° ea it x + v f=
+ees @ AHS GOSH MS predictedendstrS YA RAUCH. SS WS We Al2tol, DSS
+"Exceeded"2} ZAISUCH. AlS tooltips SLsHA BSsoS SH UAT, so FD AHS
+tooltipO| "Exceeded" CHAl &D} SHS SABUC.
+
+GO| SHE SAP “Tokens wilt run out" AS HASSS +AVsMSUCh. AVstD
+Gl A S at SUIct.
+
+@ Bash(git add -A & git commit -m "Add predicted depletion time to tooltip even when limit exceeded" &&
+git push)
+L [claude/add-taskbar-notification-md-011CUtvbkKFcjQ7pSySivg38 aabdct3] Add predicted depletion t
+ime to tooltip even when Limit exceeded
+A 2 files changed, 29 insertions(+), 8 deletions(-)
++3 lines (ctri+o to expand)
+
+Bash(taskkill /F /IM python.exe 2>nul & del "%TEMP%\claude_monitor_tray.lock" 2>nul & echo "Cleaned")
+L Running.
+
+Bash(start cmd /k "python -m claude_monitor --tray")
+L L Waiting.
+
+Bash command
+
+taskkill /F /IM python.exe 2>nul & del "%TEMP%\claude_monitor_tray.lock" 2>nul & echo "Cleaned"
+Clean up
+
+Do you want to proceed?
+» 1. Yes
+2. No, and tell Claude what to do differently (esc)
+
+seoMowse
+
+G Claude-Code-Usage-Monitor > MJ READMEmd 4:1 CRLF UTF-8 SQ 47} SY sklearn-env GS ©
