@@ -267,7 +267,7 @@ class OCRAutoApprover:
                     app_id="Claude Auto Approver",
                     title="AUTO APPROVING",
                     msg=f"Window: {window_type}\nTarget: {window_title[:40]}",
-                    duration="long",  # Long duration for visibility
+                    duration="short",
                     icon=icon_path
                 )
 
@@ -341,13 +341,17 @@ class OCRAutoApprover:
                     hwnd = window['hwnd']
                     title = window['title']
 
-                    # Quick detection: if window title contains "Question", assume it's approval dialog
-                    if 'question' in title.lower():
-                        print(f"\n[QUICK-DETECT] Found Question window: {title}")
+                    # Quick detection: if window title contains approval keywords
+                    title_lower = title.lower()
+                    quick_detect_keywords = ['question', 'approve', 'confirm', 'permission', 'allow']
+
+                    if any(keyword in title_lower for keyword in quick_detect_keywords):
+                        print(f"\n[QUICK-DETECT] Found approval window: {title}")
 
                         if self.should_approve(hwnd):
                             print(f"[ACTION] Sending approval and showing notification...")
                             self.send_approval(hwnd, title)
+                            print(f"[SUCCESS] Approval sent and notification shown")
                         else:
                             print(f"[SKIP] Too soon to approve again (within {self.min_approval_interval}s)")
                         continue
@@ -367,12 +371,13 @@ class OCRAutoApprover:
                         if self.should_approve(hwnd):
                             try:
                                 safe_title = title.encode('ascii', 'ignore').decode('ascii')
-                                print(f"\n[DETECTED] Approval request in: {safe_title[:50]}")
+                                print(f"\n[OCR-DETECT] Approval request in: {safe_title[:50]}")
                             except:
-                                print(f"\n[DETECTED] Approval request detected")
+                                print(f"\n[OCR-DETECT] Approval request detected")
 
                             print(f"[ACTION] Sending approval and showing notification...")
                             self.send_approval(hwnd, title)
+                            print(f"[SUCCESS] Approval sent and notification shown")
                         else:
                             print(f"[SKIP] Too soon to approve again (within {self.min_approval_interval}s)")
 
