@@ -204,10 +204,13 @@ class OCRAutoApprover:
                 # Get absolute path to icon
                 icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "approval_icon.png")
 
-                # Create notification
+                # Add timestamp to make each notification unique (prevents Windows from grouping/ignoring them)
+                timestamp = time.strftime('%H:%M:%S')
+
+                # Create notification with unique message
                 toast = Notification(
                     app_id="Claude Auto Approver",
-                    title="Auto Approval Sent",
+                    title=f"Auto Approval [{timestamp}]",
                     msg=f"Window: {window_type}",
                     duration="short",
                     icon=icon_path if os.path.exists(icon_path) else ""
@@ -215,10 +218,10 @@ class OCRAutoApprover:
 
                 # Show notification
                 toast.show()
-                print(f"[SUCCESS] Windows notification shown for: {window_type}")
+                print(f"[SUCCESS] Windows notification shown for: {window_type} at {timestamp}")
 
                 # Give notification time to appear before continuing
-                time.sleep(0.5)
+                time.sleep(1.0)  # Increased from 0.5 to 1.0 for better reliability
             except Exception as e:
                 print(f"[WARNING] Windows notification failed: {e}")
                 import traceback
