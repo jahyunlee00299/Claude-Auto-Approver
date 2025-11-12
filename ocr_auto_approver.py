@@ -544,13 +544,13 @@ class OCRAutoApprover:
             remaining = int(self.re_approval_cooldown - time_since_approval)
             return False  # Still in cooldown
 
-    def send_approval(self, hwnd, window_title, response_key='2', detected_text=''):
+    def send_approval(self, hwnd, window_title, response_key, detected_text=''):
         """Send response key to window and show notification
 
         Args:
             hwnd: Window handle
             window_title: Window title
-            response_key: Key to send ('1' or '2')
+            response_key: Key to send ('1' or '2') - REQUIRED, no default
             detected_text: OCR detected text (for notification)
         """
         # Convert window title to ASCII-safe string for console output
