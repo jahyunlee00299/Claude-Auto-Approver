@@ -166,8 +166,7 @@ class OCRAutoApprover:
 
         # Exclude keywords (removed 'editor' to allow Claude Code windows)
         self.exclude_keywords = [
-            'claude auto approver',  # Don't detect our own notification window
-            'auto approval',  # Don't detect our own notification window
+            'auto approval complete',  # Only exclude notification popups
             'chrome',  # Exclude Chrome browser
             'google chrome',  # Exclude Chrome browser
             'nvidia geforce',  # Exclude NVIDIA overlay
@@ -196,8 +195,9 @@ class OCRAutoApprover:
             'Dwm',  # Desktop Window Manager (notification windows)
         ]
 
-        # Duplicate prevention - track per window (once approved, never again until program restart)
-        self.approved_windows = set()  # Track which windows have been approved
+        # Duplicate prevention - track per window with timestamp for time-based re-approval
+        self.approved_windows = {}  # Track {hwnd: last_approval_timestamp}
+        self.re_approval_cooldown = 10  # Seconds before same window can be approved again
 
         # Current window
         try:
@@ -439,7 +439,7 @@ class OCRAutoApprover:
             return ""
 
     def check_approval_pattern(self, text):
-        """Check if text contains approval pattern - relaxed detection
+        """Check if text contains approval pattern - strict detection to avoid false positives
 
         Returns:
             bool: True if approval pattern detected, False otherwise
@@ -452,21 +452,25 @@ class OCRAutoApprover:
         # Remove extra whitespace and normalize text
         text_normalized = ' '.join(text_lower.split())
 
+        # STRICT: Must have option numbers in proper format
+        has_option_1 = ('1.' in text or '1)' in text) and len([line for line in text.split('\n') if line.strip().startswith(('1.', '1)')]) > 0)
+        has_option_2 = ('2.' in text or '2)' in text) and len([line for line in text.split('\n') if line.strip().startswith(('2.', '2)')]) > 0)
+
+        if not (has_option_1 and has_option_2):
+            return False  # Must have both option 1 and 2
+
         # Check for sentence patterns
         for pattern in self.approval_patterns:
             if pattern in text_normalized:
                 print(f"[DEBUG] Matched sentence pattern: '{pattern}'")
                 return True
 
-        # Relaxed check: just look for common approval keywords
-        approval_keywords = ['yes', 'no', 'approve', 'proceed', 'allow', 'select', 'choose', 'permission', 'create', 'want to', 'would you', 'do you']
+        # STRICT check: Must have approval keywords AND proper numbered options
+        approval_keywords = ['approve', 'proceed', 'allow', 'select', 'choose', 'permission', 'create', 'want to', 'would you', 'do you']
         has_keyword = any(keyword in text_lower for keyword in approval_keywords)
 
-        # Check for option numbers (more relaxed)
-        has_numbers = ('1' in text and '2' in text) or ('1.' in text) or ('2.' in text) or ('1)' in text)
-
-        if has_keyword and has_numbers:
-            print(f"[DEBUG] Matched approval keyword + numbers (relaxed)")
+        if has_keyword and has_option_1 and has_option_2:
+            print(f"[DEBUG] Matched approval keyword + numbered options (strict)")
             return True
 
         return False
@@ -478,48 +482,71 @@ class OCRAutoApprover:
             str: '1' or '2' depending on the options
         """
         if not text:
-            return '2'  # Default
+            return '1'  # Default to option 1 (safer choice)
 
         text_lower = text.lower()
-
-        # Check if option 3 contains "no, and tell claude"
-        # This means options 1 or 2 are "yes" options
-        has_option_3_no = 'no, and tell claude' in text_lower or 'tell claude what to do differently' in text_lower
-
-        # Check if option 2 contains "no"
         lines = text.split('\n')
+
+        # Extract option texts
+        option_1_text = ''
         option_2_text = ''
+
         for line in lines:
             line_stripped = line.strip()
-            if line_stripped.startswith('2.') or line_stripped.startswith('2)'):
+            if line_stripped.startswith('1.') or line_stripped.startswith('1)'):
+                option_1_text = line_stripped.lower()
+            elif line_stripped.startswith('2.') or line_stripped.startswith('2)'):
                 option_2_text = line_stripped.lower()
-                break
 
-        # If option 2 has "no" in it, choose option 1
-        if 'no' in option_2_text and ('2.' in text_lower or '2)' in text_lower):
+        print(f"[DEBUG] Option 1: {option_1_text[:50]}")
+        print(f"[DEBUG] Option 2: {option_2_text[:50]}")
+
+        # PRIORITY 1: Look for "don't ask again" / "remember" / "allow all" in option 2
+        option_2_persistent = any(keyword in option_2_text for keyword in ["don't ask", "remember", "allow all", "all edit"])
+
+        if option_2_persistent and 'yes' in option_2_text:
+            print(f"[DEBUG] Option 2 is 'yes and don't ask again' - selecting option 2")
+            return '2'
+
+        # PRIORITY 2: If option 2 contains "no", choose option 1
+        if 'no' in option_2_text and 'yes' in option_1_text:
             print(f"[DEBUG] Option 2 contains 'no' - selecting option 1")
             return '1'
 
-        # If option 3 exists with "no and tell claude", we want option 2 (allow all)
-        if has_option_3_no:
-            print(f"[DEBUG] Option 3 is 'no' - selecting option 2 (allow all)")
+        # PRIORITY 3: If option 1 contains "no", choose option 2
+        if 'no' in option_1_text and 'yes' in option_2_text:
+            print(f"[DEBUG] Option 1 contains 'no' - selecting option 2")
             return '2'
 
-        # Default: option 2 for "yes and don't ask again"
-        return '2'
+        # Default: option 1 (safer - usually "yes" without persistent permission)
+        print(f"[DEBUG] Using default - selecting option 1")
+        return '1'
 
     def should_approve(self, hwnd):
-        """Check if should auto-approve (only once per window)"""
-        # Only approve if this window hasn't been approved before
-        return hwnd not in self.approved_windows
+        """Check if should auto-approve (with time-based cooldown)"""
+        # Check if this window was approved before
+        if hwnd not in self.approved_windows:
+            return True  # Never approved, OK to approve
 
-    def send_approval(self, hwnd, window_title, response_key='2'):
+        # Check if cooldown period has passed
+        last_approval_time = self.approved_windows[hwnd]
+        time_since_approval = time.time() - last_approval_time
+
+        if time_since_approval >= self.re_approval_cooldown:
+            return True  # Cooldown passed, OK to approve again
+        else:
+            # Still in cooldown period
+            remaining = int(self.re_approval_cooldown - time_since_approval)
+            return False  # Still in cooldown
+
+    def send_approval(self, hwnd, window_title, response_key='2', detected_text=''):
         """Send response key to window and show notification
 
         Args:
             hwnd: Window handle
             window_title: Window title
             response_key: Key to send ('1' or '2')
+            detected_text: OCR detected text (for notification)
         """
         # Convert window title to ASCII-safe string for console output
         try:
@@ -560,10 +587,24 @@ class OCRAutoApprover:
                 # Add timestamp
                 timestamp = time.strftime('%H:%M:%S')
 
+                # Prepare detected text preview (first 100 chars, cleaned up)
+                text_preview = ''
+                if detected_text:
+                    # Clean up text: remove extra whitespace, get first few lines
+                    lines = [line.strip() for line in detected_text.split('\n') if line.strip()]
+                    text_preview = '\n'.join(lines[:3])  # Show first 3 lines
+                    if len(text_preview) > 150:
+                        text_preview = text_preview[:150] + '...'
+
+                # Build notification message
+                notification_msg = f"Option '{response_key}' was automatically selected"
+                if text_preview:
+                    notification_msg += f"\n\nDetected text:\n{text_preview}"
+
                 # Show popup notification (non-blocking)
                 show_notification_popup(
                     "Auto Approval Complete",
-                    f"Option '{response_key}' was automatically selected",
+                    notification_msg,
                     window_info=safe_title[:100],  # Use the full window title
                     duration=3
                 )
@@ -593,12 +634,12 @@ class OCRAutoApprover:
             win32api.keybd_event(ord(response_key), 0, win32con.KEYEVENTF_KEYUP, 0)
 
             self.approval_count += 1
-            self.approved_windows.add(hwnd)  # Mark this window as approved
+            self.approved_windows[hwnd] = time.time()  # Mark this window as approved with timestamp
 
             timestamp = time.strftime('%H:%M:%S')
             print(f"[SUCCESS] Approval completed at {timestamp}")
             print(f"[INFO] Total approvals so far: {self.approval_count}")
-            print(f"[INFO] Window added to approved list (won't auto-approve again)\n")
+            print(f"[INFO] Window added to cooldown list ({self.re_approval_cooldown}s before next approval)\n")
 
             # Return to original window
             if self.current_hwnd:
@@ -655,7 +696,7 @@ class OCRAutoApprover:
                 # Get current foreground window
                 try:
                     hwnd = win32gui.GetForegroundWindow()
-                    if hwnd and hwnd not in self.approved_windows:
+                    if hwnd and self.should_approve(hwnd):
                         title = win32gui.GetWindowText(hwnd)
 
                         # Skip system windows and excluded keywords
@@ -672,10 +713,23 @@ class OCRAutoApprover:
                                         response_key = self.determine_response_key(text)
 
                                         timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+
+                                        # Safe title for console output
+                                        try:
+                                            safe_title = title[:60].encode('ascii', 'ignore').decode('ascii')
+                                        except:
+                                            safe_title = "Window with special characters"
+
+                                        # Safe text preview
+                                        try:
+                                            safe_text = text[:200].encode('ascii', 'ignore').decode('ascii')
+                                        except:
+                                            safe_text = "[text contains special characters]"
+
                                         print(f"\n{'='*70}")
                                         print(f"[{timestamp}] APPROVAL REQUEST DETECTED")
                                         print(f"{'='*70}")
-                                        print(f"Window Title: {title[:60]}")
+                                        print(f"Window Title: {safe_title}")
                                         print(f"Action: Sending '{response_key}'")
                                         print(f"{'='*70}\n")
                                         self.send_approval(hwnd, title, response_key)
