@@ -478,6 +478,10 @@ class OCRAutoApprover:
     def determine_response_key(self, text):
         """Determine which key to press based on the options in the text
 
+        Logic:
+        - If 3 options (1, 2, 3): Select option 2 (usually "yes, and don't ask again")
+        - If 2 options (1, 2): Select option 1 (safer, one-time approval)
+
         Returns:
             str: '1' or '2' depending on the options
         """
@@ -487,9 +491,11 @@ class OCRAutoApprover:
         text_lower = text.lower()
         lines = text.split('\n')
 
-        # Extract option texts
+        # Extract option texts and count options
         option_1_text = ''
         option_2_text = ''
+        option_3_text = ''
+        has_option_3 = False
 
         for line in lines:
             line_stripped = line.strip()
@@ -497,30 +503,25 @@ class OCRAutoApprover:
                 option_1_text = line_stripped.lower()
             elif line_stripped.startswith('2.') or line_stripped.startswith('2)'):
                 option_2_text = line_stripped.lower()
+            elif line_stripped.startswith('3.') or line_stripped.startswith('3)'):
+                option_3_text = line_stripped.lower()
+                has_option_3 = True
 
-        print(f"[DEBUG] Option 1: {option_1_text[:50]}")
-        print(f"[DEBUG] Option 2: {option_2_text[:50]}")
+        print(f"[DEBUG] Option 1: {option_1_text[:50] if option_1_text else 'N/A'}")
+        print(f"[DEBUG] Option 2: {option_2_text[:50] if option_2_text else 'N/A'}")
+        if has_option_3:
+            print(f"[DEBUG] Option 3: {option_3_text[:50] if option_3_text else 'N/A'}")
+        print(f"[DEBUG] Has 3 options: {has_option_3}")
 
-        # PRIORITY 1: Look for "don't ask again" / "remember" / "allow all" in option 2
-        option_2_persistent = any(keyword in option_2_text for keyword in ["don't ask", "remember", "allow all", "all edit"])
-
-        if option_2_persistent and 'yes' in option_2_text:
-            print(f"[DEBUG] Option 2 is 'yes and don't ask again' - selecting option 2")
+        # MAIN LOGIC: Check if there are 3 options
+        if has_option_3:
+            # 3 options detected -> Select option 2 (usually "yes, and don't ask again")
+            print(f"[DEBUG] 3 options detected - selecting option 2")
             return '2'
-
-        # PRIORITY 2: If option 2 contains "no", choose option 1
-        if 'no' in option_2_text and 'yes' in option_1_text:
-            print(f"[DEBUG] Option 2 contains 'no' - selecting option 1")
+        else:
+            # 2 options detected -> Select option 1 (safer, one-time approval)
+            print(f"[DEBUG] 2 options detected - selecting option 1")
             return '1'
-
-        # PRIORITY 3: If option 1 contains "no", choose option 2
-        if 'no' in option_1_text and 'yes' in option_2_text:
-            print(f"[DEBUG] Option 1 contains 'no' - selecting option 2")
-            return '2'
-
-        # Default: option 1 (safer - usually "yes" without persistent permission)
-        print(f"[DEBUG] Using default - selecting option 1")
-        return '1'
 
     def should_approve(self, hwnd):
         """Check if should auto-approve (with time-based cooldown)"""
@@ -582,7 +583,8 @@ class OCRAutoApprover:
 
             # Show Tkinter popup notification
             try:
-                print(f"[INFO] Showing popup notification...")
+                print(f"[INFO] Preparing notification...")
+                print(f"[DEBUG] detected_text length: {len(detected_text) if detected_text else 0}")
 
                 # Add timestamp
                 timestamp = time.strftime('%H:%M:%S')
@@ -595,11 +597,16 @@ class OCRAutoApprover:
                     text_preview = '\n'.join(lines[:3])  # Show first 3 lines
                     if len(text_preview) > 150:
                         text_preview = text_preview[:150] + '...'
+                    print(f"[DEBUG] Text preview prepared: {len(text_preview)} chars")
+                else:
+                    print(f"[WARNING] No detected_text provided to notification!")
 
                 # Build notification message
                 notification_msg = f"Option '{response_key}' was automatically selected"
                 if text_preview:
                     notification_msg += f"\n\nDetected text:\n{text_preview}"
+
+                print(f"[INFO] Showing popup notification...")
 
                 # Show popup notification (non-blocking)
                 show_notification_popup(
@@ -609,7 +616,8 @@ class OCRAutoApprover:
                     duration=3
                 )
 
-                print(f"[SUCCESS] Popup notification shown for: {window_type} at {timestamp}")
+                print(f"[SUCCESS] Notification sent for: {window_type} at {timestamp}")
+                print(f"[SUCCESS] Check Windows Action Center for notification!")
 
                 # Small delay
                 time.sleep(0.2)
@@ -725,13 +733,20 @@ class OCRAutoApprover:
                                             except:
                                                 safe_title = "Window with special characters"
 
+                                            # Safe text preview
+                                            try:
+                                                safe_text = text[:200].encode('ascii', 'ignore').decode('ascii')
+                                            except:
+                                                safe_text = "[text contains special characters]"
+
                                             print(f"\n{'='*70}")
-                                            print(f"[{timestamp}] APPROVAL REQUEST DETECTED")
+                                            print(f"[{timestamp}] APPROVAL REQUEST DETECTED (Active Scan)")
                                             print(f"{'='*70}")
                                             print(f"Window Title: {safe_title}")
                                             print(f"Action: Sending '{response_key}'")
+                                            print(f"Detected Text Preview: {safe_text}")
                                             print(f"{'='*70}\n")
-                                            self.send_approval(hwnd, title, response_key)
+                                            self.send_approval(hwnd, title, response_key, detected_text=text)
                     except Exception as e:
                         pass  # Silent fail for individual window
 
