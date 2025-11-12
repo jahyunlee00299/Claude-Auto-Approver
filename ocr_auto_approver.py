@@ -14,13 +14,116 @@ import winsound
 from PIL import Image
 import pytesseract
 import io
-from winotify import Notification, audio
+import subprocess
 import os
 
 # No UTF-8 configuration - use ASCII only for output to avoid encoding issues
 
 # Tesseract path
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+
+
+def show_notification_popup(title, message, window_info=None, duration=3):
+    """
+    Show notification using winotify with logo and detailed information
+    """
+    try:
+        # Get current time
+        current_time = time.strftime('%Y-%m-%d %H:%M:%S')
+        time_only = time.strftime('%H:%M:%S')
+
+        # Build detailed message (use safe ASCII characters only)
+        if window_info:
+            detailed_message = f"Window: {window_info}\nTime: {current_time}\n\n{message}"
+        else:
+            detailed_message = f"Time: {current_time}\n\n{message}"
+
+        print(f"[INFO] Notification: {title} at {time_only}")
+
+        # Use winotify for notifications
+        try:
+            from winotify import Notification, audio
+            import os
+
+            # Create notification
+            toast = Notification(
+                app_id="Claude Auto Approver",
+                title=f"✅ {title}",
+                msg=detailed_message,
+                duration="long"  # short, long
+            )
+
+            # Add approval icon if exists
+            icon_path = os.path.join(os.path.dirname(__file__), "approval_icon.png")
+            if os.path.exists(icon_path):
+                try:
+                    toast.icon = icon_path
+                    print(f"[OK] Approval icon added to notification")
+                except Exception as e:
+                    print(f"[INFO] Could not add icon to notification: {e}")
+            else:
+                print(f"[INFO] Icon file not found at {icon_path} - Please save your icon image as approval_icon.png")
+
+            # Set sound
+            toast.set_audio(audio.Default, loop=False)
+
+            # Show notification
+            toast.show()
+
+            print(f"[OK] Winotify notification sent with detailed info")
+            return  # Exit early if winotify succeeds
+
+        except Exception as e:
+            print(f"[WARNING] winotify failed: {e}")
+            # PowerShell fallback is commented out - use only winotify
+
+        # # PowerShell fallback
+        # try:
+        #     # Escape XML special characters
+        #     title_escaped = unique_title.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+        #     message_escaped = message.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+        #
+        #     # PowerShell script for Windows Toast with Claude Auto Approver branding
+        #     ps_script = f'''
+        # [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
+        # [Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime] | Out-Null
+        #
+        # $APP_ID = '{{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}}\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe'
+        #
+        # $template = @"
+        # <toast scenario='reminder' duration='long'>
+        #     <visual>
+        #         <binding template='ToastGeneric'>
+        #             <text hint-style='header'>{title_escaped}</text>
+        #             <text hint-style='body'>{message_escaped}</text>
+        #             <text placement='attribution'>Claude Auto Approver</text>
+        #         </binding>
+        #     </visual>
+        #     <audio src='ms-winsoundevent:Notification.IM'/>
+        # </toast>
+        # "@
+        #
+        # $xml = New-Object Windows.Data.Xml.Dom.XmlDocument
+        # $xml.LoadXml($template)
+        # $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
+        # $toast.Tag = "approval_${{Get-Random}}"
+        # $toast.Group = "ClaudeAutoApprover"
+        # [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($APP_ID).Show($toast)
+        # '''
+        #
+        #     # Execute PowerShell (non-blocking, best effort)
+        #     subprocess.Popen(
+        #         ['powershell', '-WindowStyle', 'Hidden', '-Command', ps_script],
+        #         stdout=subprocess.DEVNULL,
+        #         stderr=subprocess.DEVNULL
+        #     )
+        #
+        #     print(f"[OK] Notification sent to Windows Action Center (Claude Auto Approver)")
+        # except:
+        #     pass  # Toast is best effort
+
+    except Exception as e:
+        print(f"[WARNING] Notification error: {e}")
 
 
 class OCRAutoApprover:
@@ -32,23 +135,69 @@ class OCRAutoApprover:
         self.approval_count = 0
         self.current_hwnd = None
 
-        # Approval patterns - simplified for better detection
+        # Tab cycling - DISABLED (removed functionality)
+        # Only passive OCR monitoring is active
+
+        # Approval patterns - sentence-based for more accurate detection
         self.approval_patterns = [
-            'proceed',
-            'Yes',
-            'Approve',
-            'option',
-            'Select',
-            'ask again',
-            'tell Claude',
+            'would you like to proceed',
+            'do you want to proceed',
+            'would you like to approve',
+            'do you want to approve',
+            'do you want to create',
+            'do you want to',
+            'select an option',
+            'choose an option',
+            'yes, and don\'t ask again',
+            'yes, and remember',
+            'yes, allow all edits',
+            'approve this action',
+            'allow this action',
+            'grant permission',
+            'would you like to allow',
+            'do you want to allow',
+            'proceed with',
+            'continue with',
+            'select one of the following',
+            'choose one of the following',
+            'no, and tell claude',
+            'tell claude what to do differently'
         ]
 
         # Exclude keywords (removed 'editor' to allow Claude Code windows)
-        self.exclude_keywords = ['readme', '.md', '.txt']
+        self.exclude_keywords = [
+            'claude auto approver',  # Don't detect our own notification window
+            'auto approval',  # Don't detect our own notification window
+            'chrome',  # Exclude Chrome browser
+            'google chrome',  # Exclude Chrome browser
+            'nvidia geforce',  # Exclude NVIDIA overlay
+            'program manager',  # Exclude Windows desktop
+            'microsoft text input',  # Exclude IME
+            'settings',  # Windows settings
+            '설정',  # Windows settings (Korean)
+            'powerpoint',  # Exclude PowerPoint
+            'ppt',  # Exclude PowerPoint files
+            'microsoft powerpoint',  # Exclude Microsoft PowerPoint
+            'hwp',  # Exclude Hangul word processor
+            '.hwp',  # Exclude HWP files
+        ]
 
-        # Duplicate prevention - track per window
-        self.last_approval_per_window = {}
-        self.min_approval_interval = 3  # Auto-approve once per 3 seconds per window
+        # System window class names to exclude
+        self.system_classes = [
+            'Windows.UI.Core.CoreWindow',  # Windows notification center
+            'Shell_TrayWnd',  # Taskbar
+            'NotifyIconOverflowWindow',  # System tray
+            'Windows.UI.Input.InputSite.WindowClass',  # System UI
+            'ApplicationFrameWindow',  # UWP apps container (including notification center)
+            'Windows.Internal.Shell.TabProxyWindow',  # Windows Shell
+            'ImmersiveLauncher',  # Start menu
+            'MultitaskingViewFrame',  # Task view
+            'ForegroundStaging',  # System staging window
+            'Dwm',  # Desktop Window Manager (notification windows)
+        ]
+
+        # Duplicate prevention - track per window (once approved, never again until program restart)
+        self.approved_windows = set()  # Track which windows have been approved
 
         # Current window
         try:
@@ -57,19 +206,109 @@ class OCRAutoApprover:
             self.current_hwnd = None
 
         print("[OK] OCR Auto Approver initialized")
+        print(f"[INFO] Mode: Passive OCR monitoring only")
 
-    def find_target_windows(self):
-        """Find all visible windows (including current)"""
+    def is_system_window(self, hwnd):
+        """Check if window is a system window (notification center, taskbar, etc.)"""
+        try:
+            # Get window class name
+            class_name = win32gui.GetClassName(hwnd)
+
+            # Check if it's a system window class
+            if class_name in self.system_classes:
+                return True
+
+            # Additional checks for notification-related windows
+            if 'notification' in class_name.lower():
+                return True
+            if 'toast' in class_name.lower():
+                return True
+            if 'windows.ui' in class_name.lower():
+                return True
+            if 'xaml' in class_name.lower():  # Windows modern UI
+                return True
+            if 'dwm' in class_name.lower():  # Desktop Window Manager
+                return True
+
+            # Check window style - exclude toolwindows and other non-standard windows
+            style = win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE)
+            if style & win32con.WS_EX_TOOLWINDOW:  # Tool windows
+                return True
+            if style & win32con.WS_EX_NOACTIVATE:  # Non-activatable windows
+                return True
+
+            # Exclude windows at -32000,-32000 (hidden system windows)
+            try:
+                left, top, right, bottom = win32gui.GetWindowRect(hwnd)
+                if left == -32000 and top == -32000:
+                    return True
+            except:
+                pass
+
+            return False
+
+        except Exception:
+            return False
+
+    def find_target_windows(self, verbose=False):
+        """Find all visible windows (including current) - with strict filtering
+
+        Works across multiple monitors.
+
+        Args:
+            verbose: If True, print detailed debug information
+        """
         def callback(hwnd, windows):
-            if win32gui.IsWindowVisible(hwnd):
+            # Check if window is visible OR minimized (we can restore minimized windows)
+            if win32gui.IsWindowVisible(hwnd) or win32gui.IsIconic(hwnd):
                 title = win32gui.GetWindowText(hwnd)
-                if title:  # Include current window
+                if title:
+                    # Exclude system windows first
+                    if self.is_system_window(hwnd):
+                        if verbose:
+                            safe_title = title.encode('ascii', 'ignore').decode('ascii')[:40]
+                            print(f"[FILTER] System window: {safe_title}")
+                        return True
+
                     # Exclude keywords
                     title_lower = title.lower()
                     is_excluded = any(exc in title_lower for exc in self.exclude_keywords)
 
                     if not is_excluded:
-                        windows.append({'hwnd': hwnd, 'title': title})
+                        # Check window size - must be reasonable (not invisible)
+                        try:
+                            left, top, right, bottom = win32gui.GetWindowRect(hwnd)
+                            width = right - left
+                            height = bottom - top
+
+                            # Minimum size: 100x20 (only exclude invisible windows)
+                            # Windows on any monitor will have valid coordinates
+                            if width >= 100 and height >= 20:
+                                # Get window class to help identify the window type
+                                try:
+                                    class_name = win32gui.GetClassName(hwnd)
+                                except:
+                                    class_name = "Unknown"
+
+                                windows.append({
+                                    'hwnd': hwnd,
+                                    'title': title,
+                                    'class': class_name,
+                                    'pos': (left, top, right, bottom)
+                                })
+
+                                if verbose:
+                                    safe_title = title.encode('ascii', 'ignore').decode('ascii')[:40]
+                                    print(f"[TARGET] {safe_title} ({width}x{height})")
+                            elif verbose:
+                                safe_title = title.encode('ascii', 'ignore').decode('ascii')[:40]
+                                print(f"[FILTER] Too small ({width}x{height}): {safe_title}")
+                        except:
+                            pass
+                    elif verbose:
+                        safe_title = title.encode('ascii', 'ignore').decode('ascii')[:40]
+                        matching_kw = [k for k in self.exclude_keywords if k in title_lower][0]
+                        print(f"[FILTER] Excluded keyword '{matching_kw}': {safe_title}")
             return True
 
         windows = []
@@ -78,6 +317,43 @@ class OCRAutoApprover:
         except:
             pass
         return windows
+
+    def activate_window(self, hwnd):
+        """Activate a window (works across multiple monitors)"""
+        try:
+            # Check if window is minimized
+            if win32gui.IsIconic(hwnd):
+                win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+                time.sleep(0.2)
+
+            # Bring window to front
+            win32gui.ShowWindow(hwnd, win32con.SW_SHOW)
+            time.sleep(0.1)
+
+            # Try to set foreground - may fail if we don't have permission
+            try:
+                win32gui.SetForegroundWindow(hwnd)
+            except:
+                # Alternative method: simulate Alt key to allow SetForegroundWindow
+                win32api.keybd_event(win32con.VK_MENU, 0, 0, 0)
+                time.sleep(0.05)
+                win32api.keybd_event(win32con.VK_MENU, 0, win32con.KEYEVENTF_KEYUP, 0)
+                time.sleep(0.05)
+                win32gui.SetForegroundWindow(hwnd)
+
+            time.sleep(0.2)  # Wait for window to fully activate
+
+            # Verify window is now in foreground
+            current_foreground = win32gui.GetForegroundWindow()
+            if current_foreground == hwnd:
+                return True
+            else:
+                print(f"[DEBUG] Failed to bring window to foreground (current: {win32gui.GetWindowText(current_foreground)[:30]})")
+                return False
+
+        except Exception as e:
+            print(f"[DEBUG] Failed to activate window: {e}")
+            return False
 
     def capture_window(self, hwnd):
         """Capture window screenshot"""
@@ -124,17 +400,38 @@ class OCRAutoApprover:
         except Exception:
             return None
 
-    def extract_text_from_image(self, img):
-        """Extract text from image (OCR)"""
-        try:
-            # Try full image first
-            text = pytesseract.image_to_string(img, lang='eng')
+    def extract_text_from_image(self, img, fast_mode=False):
+        """Extract text from image (OCR)
 
-            # If too little text, try bottom half
-            if len(text) < 50:
+        Args:
+            img: PIL Image object
+            fast_mode: If True, use faster OCR settings with less accuracy
+        """
+        try:
+            if fast_mode:
+                # Fast mode: use PSM 6 (single block) and lower DPI for speed
+                custom_config = r'--psm 6 --oem 3'
+
+                # Resize image to smaller size for faster processing
                 width, height = img.size
-                bottom_region = img.crop((0, int(height * 0.5), width, height))
-                text = pytesseract.image_to_string(bottom_region, lang='eng')
+                if width > 800 or height > 600:
+                    ratio = min(800/width, 600/height)
+                    new_size = (int(width * ratio), int(height * ratio))
+                    img = img.resize(new_size, Image.LANCZOS)
+
+                # Only check bottom half where approval dialogs usually are
+                width, height = img.size
+                bottom_region = img.crop((0, int(height * 0.4), width, height))
+                text = pytesseract.image_to_string(bottom_region, lang='eng', config=custom_config)
+            else:
+                # Normal mode: more thorough
+                text = pytesseract.image_to_string(img, lang='eng')
+
+                # If too little text, try bottom half
+                if len(text) < 50:
+                    width, height = img.size
+                    bottom_region = img.crop((0, int(height * 0.5), width, height))
+                    text = pytesseract.image_to_string(bottom_region, lang='eng')
 
             return text
 
@@ -142,39 +439,96 @@ class OCRAutoApprover:
             return ""
 
     def check_approval_pattern(self, text):
-        """Check if text contains approval pattern"""
+        """Check if text contains approval pattern - relaxed detection
+
+        Returns:
+            bool: True if approval pattern detected, False otherwise
+        """
         if not text:
             return False
 
         text_lower = text.lower()
+
+        # Remove extra whitespace and normalize text
+        text_normalized = ' '.join(text_lower.split())
+
+        # Check for sentence patterns
         for pattern in self.approval_patterns:
-            if pattern.lower() in text_lower:
+            if pattern in text_normalized:
+                print(f"[DEBUG] Matched sentence pattern: '{pattern}'")
                 return True
+
+        # Relaxed check: just look for common approval keywords
+        approval_keywords = ['yes', 'no', 'approve', 'proceed', 'allow', 'select', 'choose', 'permission', 'create', 'want to', 'would you', 'do you']
+        has_keyword = any(keyword in text_lower for keyword in approval_keywords)
+
+        # Check for option numbers (more relaxed)
+        has_numbers = ('1' in text and '2' in text) or ('1.' in text) or ('2.' in text) or ('1)' in text)
+
+        if has_keyword and has_numbers:
+            print(f"[DEBUG] Matched approval keyword + numbers (relaxed)")
+            return True
 
         return False
 
+    def determine_response_key(self, text):
+        """Determine which key to press based on the options in the text
+
+        Returns:
+            str: '1' or '2' depending on the options
+        """
+        if not text:
+            return '2'  # Default
+
+        text_lower = text.lower()
+
+        # Check if option 3 contains "no, and tell claude"
+        # This means options 1 or 2 are "yes" options
+        has_option_3_no = 'no, and tell claude' in text_lower or 'tell claude what to do differently' in text_lower
+
+        # Check if option 2 contains "no"
+        lines = text.split('\n')
+        option_2_text = ''
+        for line in lines:
+            line_stripped = line.strip()
+            if line_stripped.startswith('2.') or line_stripped.startswith('2)'):
+                option_2_text = line_stripped.lower()
+                break
+
+        # If option 2 has "no" in it, choose option 1
+        if 'no' in option_2_text and ('2.' in text_lower or '2)' in text_lower):
+            print(f"[DEBUG] Option 2 contains 'no' - selecting option 1")
+            return '1'
+
+        # If option 3 exists with "no and tell claude", we want option 2 (allow all)
+        if has_option_3_no:
+            print(f"[DEBUG] Option 3 is 'no' - selecting option 2 (allow all)")
+            return '2'
+
+        # Default: option 2 for "yes and don't ask again"
+        return '2'
+
     def should_approve(self, hwnd):
-        """Check if should auto-approve (prevent duplicates)"""
-        current_time = time.time()
+        """Check if should auto-approve (only once per window)"""
+        # Only approve if this window hasn't been approved before
+        return hwnd not in self.approved_windows
 
-        # Prevent too frequent approvals on same window
-        if hwnd in self.last_approval_per_window:
-            last_time = self.last_approval_per_window[hwnd]
-            if current_time - last_time < self.min_approval_interval:
-                return False
+    def send_approval(self, hwnd, window_title, response_key='2'):
+        """Send response key to window and show notification
 
-        return True
+        Args:
+            hwnd: Window handle
+            window_title: Window title
+            response_key: Key to send ('1' or '2')
+        """
+        # Convert window title to ASCII-safe string for console output
+        try:
+            safe_title = window_title.encode('ascii', 'ignore').decode('ascii')
+        except:
+            safe_title = "Window with special characters"
 
-    def send_approval(self, hwnd, window_title):
-        """Send '2' to window and show notification"""
-        # Print big approval message that can be easily seen
-        print("\n" + "="*70)
-        print("APPROVAL DETECTED".center(70))
-        print(f"Window: {window_title[:60]}".center(70))
-        print("Action: Sending '2' (Yes, and don't ask again)".center(70))
-        print("="*70 + "\n")
-
-        print(f"[INFO] send_approval called for window: {window_title[:50]}")
+        print(f"[INFO] Executing approval sequence for: {safe_title[:50]}")
+        print(f"[INFO] Sending key: '{response_key}'")
 
         try:
             # Show Windows notification using winotify
@@ -199,31 +553,28 @@ class OCRAutoApprover:
                 else:
                     window_type = window_title[:20]
 
-            # Show Windows notification
+            # Show Tkinter popup notification
             try:
-                # Get absolute path to icon
-                icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "approval_icon.png")
+                print(f"[INFO] Showing popup notification...")
 
-                # Add timestamp to make each notification unique (prevents Windows from grouping/ignoring them)
+                # Add timestamp
                 timestamp = time.strftime('%H:%M:%S')
 
-                # Create notification with unique message
-                toast = Notification(
-                    app_id="Claude Auto Approver",
-                    title=f"Auto Approval [{timestamp}]",
-                    msg=f"Window: {window_type}",
-                    duration="short",
-                    icon=icon_path if os.path.exists(icon_path) else ""
+                # Show popup notification (non-blocking)
+                show_notification_popup(
+                    "Auto Approval Complete",
+                    f"Option '{response_key}' was automatically selected",
+                    window_info=safe_title[:100],  # Use the full window title
+                    duration=3
                 )
 
-                # Show notification
-                toast.show()
-                print(f"[SUCCESS] Windows notification shown for: {window_type} at {timestamp}")
+                print(f"[SUCCESS] Popup notification shown for: {window_type} at {timestamp}")
 
-                # Give notification time to appear before continuing
-                time.sleep(1.0)  # Increased from 0.5 to 1.0 for better reliability
+                # Small delay
+                time.sleep(0.2)
+
             except Exception as e:
-                print(f"[WARNING] Windows notification failed: {e}")
+                print(f"[WARNING] Notification failed: {e}")
                 import traceback
                 traceback.print_exc()
 
@@ -235,21 +586,19 @@ class OCRAutoApprover:
 
             time.sleep(0.3)  # Window activation delay
 
-            # Simply send '2' to select "Yes, and don't ask again"
-            print(f"[INFO] Sending '2' to select option 2")
-            win32api.keybd_event(ord('2'), 0, 0, 0)
+            # Send the appropriate key
+            print(f"[INFO] Sending '{response_key}' to select option {response_key}")
+            win32api.keybd_event(ord(response_key), 0, 0, 0)
             time.sleep(0.05)
-            win32api.keybd_event(ord('2'), 0, win32con.KEYEVENTF_KEYUP, 0)
+            win32api.keybd_event(ord(response_key), 0, win32con.KEYEVENTF_KEYUP, 0)
 
             self.approval_count += 1
-            self.last_approval_per_window[hwnd] = time.time()
+            self.approved_windows.add(hwnd)  # Mark this window as approved
 
             timestamp = time.strftime('%H:%M:%S')
-            try:
-                safe_title = window_title.encode('ascii', 'ignore').decode('ascii')
-                print(f"[{timestamp}] Auto-approved: {safe_title[:50]}")
-            except:
-                print(f"[{timestamp}] Auto-approved (window with special chars)")
+            print(f"[SUCCESS] Approval completed at {timestamp}")
+            print(f"[INFO] Total approvals so far: {self.approval_count}")
+            print(f"[INFO] Window added to approved list (won't auto-approve again)\n")
 
             # Return to original window
             if self.current_hwnd:
@@ -270,61 +619,71 @@ class OCRAutoApprover:
         print("\n" + "="*60)
         print("OCR Auto Approver")
         print("="*60)
-        print("\nMonitoring all windows via screen OCR...")
-        print("Will auto-input '1' when approval request detected")
-        print(f"Approval interval: {self.min_approval_interval} seconds")
+        print("\n=== PASSIVE OCR MONITORING ===")
+        print("\nMode: Passive OCR Only")
+        print("  - Monitors current active window with OCR")
+        print("  - Detects approval dialogs automatically")
+        print("  - Auto-responds when pattern detected")
+        print("  - Excludes: Chrome, PowerPoint, HWP, System windows")
         print("\nPress Ctrl+C to stop\n")
+
+        # Show initial window scan
+        print("[INFO] Scanning for target windows...")
+        initial_windows = self.find_target_windows(verbose=False)
+        print(f"[OK] Found {len(initial_windows)} target windows:")
+        for i, win in enumerate(initial_windows[:10], 1):  # Show first 10
+            safe_title = win['title'].encode('ascii', 'ignore').decode('ascii')[:50]
+            width = win['pos'][2] - win['pos'][0]
+            height = win['pos'][3] - win['pos'][1]
+            print(f"  {i}. {safe_title} ({width}x{height})")
+        if len(initial_windows) > 10:
+            print(f"  ... and {len(initial_windows) - 10} more")
+        print()
+
+        passive_check_count = 0
+        last_status_time = time.time()
 
         while self.running:
             try:
-                # Find target windows
-                windows = self.find_target_windows()
+                # Passive OCR monitoring - monitors current foreground window
+                # Show periodic status update (every 30 seconds)
+                current_time = time.time()
+                if current_time - last_status_time >= 30:
+                    print(f"[STATUS] Passive monitoring active | Approvals: {self.approval_count} | Checks: {passive_check_count}")
+                    last_status_time = current_time
 
-                # Check each window (max 5)
-                for window in windows[:5]:
-                    hwnd = window['hwnd']
-                    title = window['title']
+                # Get current foreground window
+                try:
+                    hwnd = win32gui.GetForegroundWindow()
+                    if hwnd and hwnd not in self.approved_windows:
+                        title = win32gui.GetWindowText(hwnd)
 
-                    # Quick detection: if window title contains approval keywords
-                    title_lower = title.lower()
-                    quick_detect_keywords = ['question', 'approve', 'confirm', 'permission', 'allow']
+                        # Skip system windows and excluded keywords
+                        if title and not self.is_system_window(hwnd):
+                            title_lower = title.lower()
+                            if not any(exc in title_lower for exc in self.exclude_keywords):
+                                # Capture and OCR check
+                                passive_check_count += 1
+                                img = self.capture_window(hwnd)
+                                if img:
+                                    text = self.extract_text_from_image(img, fast_mode=False)
+                                    if self.check_approval_pattern(text):
+                                        # Determine response key
+                                        response_key = self.determine_response_key(text)
 
-                    if any(keyword in title_lower for keyword in quick_detect_keywords):
-                        print(f"\n[QUICK-DETECT] Found approval window: {title}")
-                        if self.should_approve(hwnd):
-                            print(f"[ACTION] Sending approval and showing notification...")
-                            self.send_approval(hwnd, title)
-                            print(f"[SUCCESS] Approval sent and notification shown")
-                        else:
-                            print(f"[SKIP] Too soon to approve again (within {self.min_approval_interval}s)")
-                        continue
+                                        timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+                                        print(f"\n{'='*70}")
+                                        print(f"[{timestamp}] APPROVAL REQUEST DETECTED")
+                                        print(f"{'='*70}")
+                                        print(f"Window Title: {title[:60]}")
+                                        print(f"Action: Sending '{response_key}'")
+                                        print(f"{'='*70}\n")
+                                        self.send_approval(hwnd, title, response_key)
+                except Exception as e:
+                    pass  # Silent fail for passive monitoring
 
-                    # Fallback: OCR detection for other windows
-                    # Capture window
-                    img = self.capture_window(hwnd)
-                    if not img:
-                        continue
-
-                    # OCR text extraction
-                    text = self.extract_text_from_image(img)
-
-                    # Check approval pattern
-                    if self.check_approval_pattern(text):
-                        if self.should_approve(hwnd):
-                            try:
-                                safe_title = title.encode('ascii', 'ignore').decode('ascii')
-                                print(f"\n[OCR-DETECT] Approval request in: {safe_title[:50]}")
-                            except:
-                                print(f"\n[OCR-DETECT] Approval request detected")
-
-                            print(f"[ACTION] Sending approval and showing notification...")
-                            self.send_approval(hwnd, title)
-                            print(f"[SUCCESS] Approval sent and notification shown")
-                        else:
-                            print(f"[SKIP] Too soon to approve again (within {self.min_approval_interval}s)")
-
-                # Sleep once after checking all windows (not per window)
-                time.sleep(3)
+                # Check every 2 seconds
+                time.sleep(2)
 
             except Exception as e:
                 print(f"[ERROR] Monitoring error: {e}")
@@ -378,7 +737,22 @@ def main():
         # Check target windows
         windows = approver.find_target_windows()
         if windows:
-            print(f"\nFound {len(windows)} windows to monitor")
+            print(f"\nFound {len(windows)} windows to monitor:")
+            for i, win in enumerate(windows, 1):
+                title = win['title']
+                hwnd = win['hwnd']
+                # Convert to ASCII-safe string for console output
+                try:
+                    safe_title = title.encode('ascii', 'ignore').decode('ascii')
+                except:
+                    safe_title = "Window with special characters"
+
+                # Get window position to check which monitor
+                try:
+                    left, top, right, bottom = win32gui.GetWindowRect(hwnd)
+                    print(f"  {i}. [{hwnd}] {safe_title[:50]} (pos: {left},{top})")
+                except:
+                    print(f"  {i}. [{hwnd}] {safe_title[:50]}")
         else:
             print("\n[WARNING] No windows found to monitor")
 
