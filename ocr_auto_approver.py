@@ -135,8 +135,8 @@ class OCRAutoApprover:
         self.approval_count = 0
         self.current_hwnd = None
 
-        # Tab cycling - DISABLED (removed functionality)
-        # Only passive OCR monitoring is active
+        # Active OCR monitoring - scans all visible windows
+        # Tab cycling feature is separate (not implemented here)
 
         # Approval patterns - sentence-based for more accurate detection
         self.approval_patterns = [
@@ -206,7 +206,7 @@ class OCRAutoApprover:
             self.current_hwnd = None
 
         print("[OK] OCR Auto Approver initialized")
-        print(f"[INFO] Mode: Passive OCR monitoring only")
+        print(f"[INFO] Mode: Active OCR monitoring (scans all windows)")
 
     def is_system_window(self, hwnd):
         """Check if window is a system window (notification center, taskbar, etc.)"""
@@ -453,8 +453,8 @@ class OCRAutoApprover:
         text_normalized = ' '.join(text_lower.split())
 
         # STRICT: Must have option numbers in proper format
-        has_option_1 = ('1.' in text or '1)' in text) and len([line for line in text.split('\n') if line.strip().startswith(('1.', '1)')]) > 0)
-        has_option_2 = ('2.' in text or '2)' in text) and len([line for line in text.split('\n') if line.strip().startswith(('2.', '2)')]) > 0)
+        has_option_1 = ('1.' in text or '1)' in text) and len([line for line in text.split('\n') if line.strip().startswith(('1.', '1)'))]) > 0
+        has_option_2 = ('2.' in text or '2)' in text) and len([line for line in text.split('\n') if line.strip().startswith(('2.', '2)'))]) > 0
 
         if not (has_option_1 and has_option_2):
             return False  # Must have both option 1 and 2
@@ -660,9 +660,9 @@ class OCRAutoApprover:
         print("\n" + "="*60)
         print("OCR Auto Approver")
         print("="*60)
-        print("\n=== PASSIVE OCR MONITORING ===")
-        print("\nMode: Passive OCR Only")
-        print("  - Monitors current active window with OCR")
+        print("\n=== ACTIVE OCR MONITORING ===")
+        print("\nMode: Active OCR (All Windows)")
+        print("  - Scans ALL visible windows with OCR")
         print("  - Detects approval dialogs automatically")
         print("  - Auto-responds when pattern detected")
         print("  - Excludes: Chrome, PowerPoint, HWP, System windows")
@@ -681,63 +681,62 @@ class OCRAutoApprover:
             print(f"  ... and {len(initial_windows) - 10} more")
         print()
 
-        passive_check_count = 0
+        active_check_count = 0
         last_status_time = time.time()
 
         while self.running:
             try:
-                # Passive OCR monitoring - monitors current foreground window
+                # Active OCR monitoring - scans all visible windows
                 # Show periodic status update (every 30 seconds)
                 current_time = time.time()
                 if current_time - last_status_time >= 30:
-                    print(f"[STATUS] Passive monitoring active | Approvals: {self.approval_count} | Checks: {passive_check_count}")
+                    print(f"[STATUS] Active monitoring | Approvals: {self.approval_count} | Checks: {active_check_count}")
                     last_status_time = current_time
 
-                # Get current foreground window
-                try:
-                    hwnd = win32gui.GetForegroundWindow()
-                    if hwnd and self.should_approve(hwnd):
-                        title = win32gui.GetWindowText(hwnd)
+                # Get all target windows
+                target_windows = self.find_target_windows(verbose=False)
 
-                        # Skip system windows and excluded keywords
-                        if title and not self.is_system_window(hwnd):
-                            title_lower = title.lower()
-                            if not any(exc in title_lower for exc in self.exclude_keywords):
-                                # Capture and OCR check
-                                passive_check_count += 1
-                                img = self.capture_window(hwnd)
-                                if img:
-                                    text = self.extract_text_from_image(img, fast_mode=False)
-                                    if self.check_approval_pattern(text):
-                                        # Determine response key
-                                        response_key = self.determine_response_key(text)
+                # Scan each window
+                for win in target_windows:
+                    hwnd = win['hwnd']
+                    title = win['title']
 
-                                        timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+                    try:
+                        # Check if should approve (cooldown check)
+                        if hwnd and self.should_approve(hwnd):
+                            # Skip system windows and excluded keywords
+                            if title and not self.is_system_window(hwnd):
+                                title_lower = title.lower()
+                                if not any(exc in title_lower for exc in self.exclude_keywords):
+                                    # Capture and OCR check
+                                    active_check_count += 1
+                                    img = self.capture_window(hwnd)
+                                    if img:
+                                        text = self.extract_text_from_image(img, fast_mode=True)  # Use fast mode for multiple windows
+                                        if self.check_approval_pattern(text):
+                                            # Determine response key
+                                            response_key = self.determine_response_key(text)
 
-                                        # Safe title for console output
-                                        try:
-                                            safe_title = title[:60].encode('ascii', 'ignore').decode('ascii')
-                                        except:
-                                            safe_title = "Window with special characters"
+                                            timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
 
-                                        # Safe text preview
-                                        try:
-                                            safe_text = text[:200].encode('ascii', 'ignore').decode('ascii')
-                                        except:
-                                            safe_text = "[text contains special characters]"
+                                            # Safe title for console output
+                                            try:
+                                                safe_title = title[:60].encode('ascii', 'ignore').decode('ascii')
+                                            except:
+                                                safe_title = "Window with special characters"
 
-                                        print(f"\n{'='*70}")
-                                        print(f"[{timestamp}] APPROVAL REQUEST DETECTED")
-                                        print(f"{'='*70}")
-                                        print(f"Window Title: {safe_title}")
-                                        print(f"Action: Sending '{response_key}'")
-                                        print(f"{'='*70}\n")
-                                        self.send_approval(hwnd, title, response_key)
-                except Exception as e:
-                    pass  # Silent fail for passive monitoring
+                                            print(f"\n{'='*70}")
+                                            print(f"[{timestamp}] APPROVAL REQUEST DETECTED")
+                                            print(f"{'='*70}")
+                                            print(f"Window Title: {safe_title}")
+                                            print(f"Action: Sending '{response_key}'")
+                                            print(f"{'='*70}\n")
+                                            self.send_approval(hwnd, title, response_key)
+                    except Exception as e:
+                        pass  # Silent fail for individual window
 
-                # Check every 2 seconds
-                time.sleep(2)
+                # Check every 3 seconds (slower because we're checking multiple windows)
+                time.sleep(3)
 
             except Exception as e:
                 print(f"[ERROR] Monitoring error: {e}")
