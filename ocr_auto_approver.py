@@ -456,6 +456,10 @@ class OCRAutoApprover:
         has_option_1 = ('1.' in text or '1)' in text) and len([line for line in text.split('\n') if line.strip().startswith(('1.', '1)'))]) > 0
         has_option_2 = ('2.' in text or '2)' in text) and len([line for line in text.split('\n') if line.strip().startswith(('2.', '2)'))]) > 0
 
+        # Debug: Show detection status
+        if '1.' in text or '1)' in text or '2.' in text or '2)' in text:
+            print(f"[DEBUG] Option detection: has_option_1={has_option_1}, has_option_2={has_option_2}")
+
         if not (has_option_1 and has_option_2):
             return False  # Must have both option 1 and 2
 
@@ -613,11 +617,19 @@ class OCRAutoApprover:
                     "Auto Approval Complete",
                     notification_msg,
                     window_info=safe_title[:100],  # Use the full window title
-                    duration=3
+                    duration=5  # Increased to 5 seconds
                 )
+
+                # Play system beep for audio feedback
+                try:
+                    winsound.MessageBeep(winsound.MB_ICONASTERISK)
+                    print(f"[OK] Beep played")
+                except:
+                    pass
 
                 print(f"[SUCCESS] Notification sent for: {window_type} at {timestamp}")
                 print(f"[SUCCESS] Check Windows Action Center for notification!")
+                print(f"[SUCCESS] *** APPROVAL COMPLETED - OPTION '{response_key}' SELECTED ***")
 
                 # Small delay
                 time.sleep(0.2)
