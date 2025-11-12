@@ -720,7 +720,21 @@ class OCRAutoApprover:
                                     active_check_count += 1
                                     img = self.capture_window(hwnd)
                                     if img:
-                                        text = self.extract_text_from_image(img, fast_mode=True)  # Use fast mode for multiple windows
+                                        text = self.extract_text_from_image(img, fast_mode=False)  # Use accurate mode for better detection
+
+                                        # Debug: Print raw OCR text when approval keywords detected
+                                        if text and ('do you want' in text.lower() or 'would you' in text.lower() or 'proceed' in text.lower()):
+                                            print(f"\n[DEBUG] Potential approval dialog detected!")
+                                            print(f"[DEBUG] OCR Text Length: {len(text)}")
+                                            print(f"[DEBUG] OCR Text (first 10 non-empty lines):")
+                                            line_count = 0
+                                            for line in text.split('\n'):
+                                                if line.strip():
+                                                    print(f"  {line.strip()[:80]}")
+                                                    line_count += 1
+                                                    if line_count >= 10:
+                                                        break
+
                                         if self.check_approval_pattern(text):
                                             # Determine response key
                                             response_key = self.determine_response_key(text)
