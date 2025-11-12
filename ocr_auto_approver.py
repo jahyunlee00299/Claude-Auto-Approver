@@ -50,7 +50,7 @@ def show_notification_popup(title, message, window_info=None, duration=3):
                 app_id="Claude Auto Approver",
                 title=f"✅ {title}",
                 msg=detailed_message,
-                duration="long"  # short, long
+                duration="short"  # short (5 sec) or long (25 sec)
             )
 
             # Add approval icon if exists
@@ -617,15 +617,8 @@ class OCRAutoApprover:
                     "Auto Approval Complete",
                     notification_msg,
                     window_info=safe_title[:100],  # Use the full window title
-                    duration=5  # Increased to 5 seconds
+                    duration=1  # 1 second
                 )
-
-                # Play system beep for audio feedback
-                try:
-                    winsound.MessageBeep(winsound.MB_ICONASTERISK)
-                    print(f"[OK] Beep played")
-                except:
-                    pass
 
                 print(f"[SUCCESS] Notification sent for: {window_type} at {timestamp}")
                 print(f"[SUCCESS] Check Windows Action Center for notification!")
