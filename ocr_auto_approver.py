@@ -50,7 +50,7 @@ def show_notification_popup(title, message, window_info=None, duration=3):
                 app_id="Claude Auto Approver",
                 title=f"✅ {title}",
                 msg=detailed_message,
-                duration="long"  # short (5 sec) or long (25 sec)
+                duration="short"  # short (5 sec) or long (25 sec)
             )
 
             # Add approval icon if exists
@@ -199,6 +199,10 @@ class OCRAutoApprover:
             'microsoft powerpoint',  # Exclude Microsoft PowerPoint
             'hwp',  # Exclude Hangul word processor
             '.hwp',  # Exclude HWP files
+            'excel',  # Exclude Excel
+            'microsoft excel',  # Exclude Microsoft Excel
+            '.xlsx',  # Exclude Excel files
+            '.xls',  # Exclude Excel files
         ]
 
         # System window class names to exclude
@@ -677,18 +681,19 @@ class OCRAutoApprover:
             # Prepare notification data
             notification_timestamp = time.strftime('%H:%M:%S')
 
-            # Prepare detected text preview
+            # Prepare detected text preview - show MORE text
             text_preview = ''
             if detected_text:
                 lines = [line.strip() for line in detected_text.split('\n') if line.strip()]
-                text_preview = '\n'.join(lines[:3])  # Show first 3 lines
-                if len(text_preview) > 150:
-                    text_preview = text_preview[:150] + '...'
+                text_preview = '\n'.join(lines[:8])  # Show first 8 lines (increased from 3)
+                if len(text_preview) > 400:
+                    text_preview = text_preview[:400] + '...'
 
-            # Build notification message
-            notification_msg = f"Option '{response_key}' was automatically selected"
+            # Build notification message - simple format
             if text_preview:
-                notification_msg += f"\n\nDetected text:\n{text_preview}"
+                notification_msg = f"Window: {safe_title[:40]} | {text_preview}"
+            else:
+                notification_msg = f"Window: {safe_title[:40]} | (No text)"
 
             # Add to queue
             self.pending_notifications.append({
@@ -805,7 +810,19 @@ class OCRAutoApprover:
                                             print(f"{'='*70}")
                                             print(f"Window Title: {safe_title}")
                                             print(f"Action: Sending '{response_key}'")
-                                            print(f"Detected Text Preview: {safe_text}")
+                                            print(f"\n=== Full Detected Text (first 15 lines) ===")
+                                            line_count = 0
+                                            for line in text.split('\n'):
+                                                if line.strip():
+                                                    safe_line = line.strip()[:100]
+                                                    try:
+                                                        safe_line = safe_line.encode('ascii', 'ignore').decode('ascii')
+                                                    except:
+                                                        pass
+                                                    print(f"  {safe_line}")
+                                                    line_count += 1
+                                                    if line_count >= 15:
+                                                        break
                                             print(f"{'='*70}\n")
                                             self.send_approval(hwnd, title, response_key, detected_text=text)
                     except Exception as e:

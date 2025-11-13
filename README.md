@@ -8,28 +8,31 @@ OCR 기반 지능형 승인 시스템 - PyCharm, CMD, PowerShell 등 모든 창�
 
 ## ✨ 주요 기능
 
-### 🧠 듀얼 모드 모니터링
-- **패시브 OCR 모드**: 현재 활성화된 창을 OCR로 실시간 모니터링
-- **액티브 사이클링 모드**: 사용자가 idle일 때 자동으로 탭/창을 순회하며 승인 요청 탐지
+### 🔍 Active OCR 모니터링
+- **전체 창 스캔**: 모든 가시적인 창을 3초마다 OCR로 스캔하여 승인 요청 감지
+- **백그라운드 모니터링**: 현재 포커스와 무관하게 모든 창 모니터링
+- **다중 모니터 지원**: 모든 모니터의 창을 동시에 모니터링
 
 ### 🎯 지능형 감지
 - **OCR 기반 텍스트 분석**: Tesseract OCR로 승인 프롬프트 정확하게 감지
-- **키 프로브 방식**: "1" + Backspace로 빠른 승인 감지 (기본값)
-- **스마트 패턴 매칭**: "Would you like to proceed?", "Do you want to approve?" 등 다양한 패턴 인식
+- **스마트 패턴 매칭**: "Would you like to proceed?", "Do you want to approve?" 등 22개 이상의 패턴 인식
+- **옵션 번호 검증**: 반드시 "1."/"1)"과 "2."/"2)" 형식의 옵션 번호가 있어야 감지
 
 ### 🛡️ 안전한 필터링
 - **시스템 창 제외**: Windows 알림 센터, 작업 표시줄, 시스템 UI 자동 제외
-- **중복 승인 방지**: 같은 창에 한 번만 승인 (프로그램 재시작 전까지)
+- **프로그램 필터링**: Chrome, PowerPoint, HWP, Excel, NVIDIA Overlay 등 자동 제외
+- **시간 기반 재승인**: 같은 창은 10초 쿨다운 후 재승인 가능
 - **크기 검증**: 최소 크기 미달 창 자동 제외
 
 ### 💬 통합 알림 시스템
-- **Windows 알림**: 승인 완료 시 winotify로 알림 표시
-- **상세 로깅**: 승인 시각, 창 정보, 감지 방법 등 상세 기록
+- **Windows 알림**: 승인 완료 시 winotify로 알림 표시 (SMS 사운드)
+- **상세 정보**: 감지된 텍스트 미리보기, 선택한 옵션, 창 정보 포함
+- **상세 로깅**: 승인 시각, 창 정보, OCR 텍스트 등 상세 기록
 - **커스텀 아이콘**: approval_icon.png로 알림 아이콘 커스터마이징
 
-### 🖥️ 다중 모니터 지원
-- **모든 모니터**: 좌우, 상하 배치된 모든 모니터의 창 모니터링
-- **최소화된 창 복원**: 필요시 자동으로 창 복원 후 승인
+### 🎮 지능형 옵션 선택
+- **3개 옵션**: Option 2 선택 (일반적으로 "Yes, and don't ask again")
+- **2개 옵션**: Option 1 선택 (더 안전한 일회성 승인)
 
 ## 🚀 빠른 시작
 
@@ -70,60 +73,65 @@ python ocr_auto_approver.py
 
 ### 작동 방식
 
-#### MODE 1: 패시브 OCR 모니터링 (항상 활성)
-1. 현재 포커스된 창을 지속적으로 모니터링
-2. OCR로 텍스트 추출 및 승인 패턴 확인
-3. 승인 요청 감지 시 즉시 자동 승인
-
-#### MODE 2: 액티브 탭 사이클링 (Idle 시)
-1. **사용자 Idle 감지**: 10초간 입력 없음
-2. **창/탭 순회**: 최대 5개 창 × 10개 탭 자동 순회
-3. **키 프로브 감지**: 각 탭마다 "1" + Backspace 입력
-   - 승인 창이면: "1"이 승인으로 처리됨
-   - 일반 에디터면: "1" 입력 후 Backspace로 취소
-4. **사용자 활동 재개 시**: 즉시 패시브 모드로 복귀
+#### Active OCR 모니터링
+1. **전체 창 열거**: 모든 가시적인 창 목록을 가져옴
+2. **필터링**: 시스템 창, 제외 키워드가 포함된 창 제외
+3. **스크린샷 캡처**: 각 창의 화면을 캡처
+4. **OCR 텍스트 추출**: Tesseract로 텍스트 추출
+5. **패턴 매칭**: 승인 패턴 및 옵션 번호(1., 2.) 확인
+6. **자동 승인**:
+   - 옵션 개수 판단 (2개 vs 3개)
+   - 적절한 키('1' 또는 '2') 전송
+   - Windows 알림 표시
+7. **쿨다운**: 같은 창은 10초 후 재승인 가능
+8. **반복**: 3초마다 전체 프로세스 반복
 
 ### 예시 출력
 
 ```
-==============================================================
+============================================================
 OCR Auto Approver
-==============================================================
+============================================================
 
-=== DUAL MODE MONITORING ===
+=== ACTIVE OCR MONITORING ===
 
-MODE 1 - Passive OCR (Always Active):
-  - Monitors current window with OCR
-  - Detects approval dialogs and auto-responds
-
-MODE 2 - Active Cycling (When Idle):
-  - Starts after 10s of inactivity
-  - Cycles through windows/tabs
-  - Presses '1' + Backspace on each tab
+Mode: Active OCR (All Windows)
+  - Scans ALL visible windows with OCR
+  - Detects approval dialogs automatically
+  - Auto-responds when pattern detected
+  - Excludes: Chrome, PowerPoint, HWP, Excel, System windows
 
 Press Ctrl+C to stop
 
 [INFO] Scanning for target windows...
 [OK] Found 8 target windows:
-  1. Python 3.11 (cmd.exe) - ocr_auto_approver.py (800x600)
-  2. MINGW64:/c/Users/Jahyun/PycharmProjects (1200x800)
-  3. PyCharm 2024.1 - Claude-Auto-Approver (1920x1080)
+  1. MINGW64:/c/Users/Jahyun/PycharmProjects (1936x1064)
+  2. PyCharm 2024.1 - Claude-Auto-Approver (1920x1080)
+  3. Python 3.11 (cmd.exe) - ocr_auto_approver.py (800x600)
   ...
 
-[STATUS] Passive monitoring active | Idle: 5.2s | Approvals: 0 | Checks: 125
+[STATUS] Active monitoring | Approvals: 0 | Checks: 125
+
+[DEBUG] Potential approval dialog detected!
+[DEBUG] Option 1: 1. yes, proceed once
+[DEBUG] Option 2: 2. yes, and don't ask again
+[DEBUG] 2 options detected - selecting option 1
 
 ======================================================================
-[2025-01-14 12:34:56] APPROVAL REQUEST DETECTED (OCR Passive)
+[2025-01-14 12:34:56] APPROVAL REQUEST DETECTED (Active Scan)
 ======================================================================
 Window Title: MINGW64:/c/Users/Jahyun/PycharmProjects/Claude-Auto-Approver
-Action: Sending '2'
+Action: Sending '1'
+Detected Text Preview: Do you want to proceed with this action?
+1. Yes, proceed once
+2. Yes, and don't ask again
 ======================================================================
 
 [INFO] Executing approval sequence for: MINGW64:/c/Users/Jahyun...
-[INFO] Sending key: '2'
+[INFO] Sending key: '1'
 [SUCCESS] Approval completed at 12:34:56
 [INFO] Total approvals so far: 1
-[INFO] Window added to approved list (won't auto-approve again)
+[INFO] Window added to cooldown list (10s before next approval)
 ```
 
 ## 📋 시스템 요구사항
@@ -143,13 +151,14 @@ Action: Sending '2'
 ### 주요 설정 값 (ocr_auto_approver.py)
 
 ```python
-# Tab cycling settings (138-148번 줄)
-self.enable_tab_cycling = True          # 탭 사이클링 활성화/비활성화
-self.idle_time_threshold = 10           # Idle 판단 시간 (초)
-self.tab_cycle_interval = 0.05          # 탭당 체류 시간 (초)
-self.max_tabs_to_cycle = 10            # 창당 최대 탭 수
-self.max_windows_to_cycle = 5          # 최대 순회 창 수
-self.use_key_probe = True              # 키 프로브 방식 사용 (False면 OCR)
+# Cooldown settings (203번 줄)
+self.re_approval_cooldown = 10          # 같은 창 재승인 대기 시간 (초)
+
+# Monitoring interval (776번 줄)
+time.sleep(3)                           # 스캔 주기 (초) - CPU 사용량 조절
+
+# OCR settings (731번 줄)
+fast_mode=False                         # True로 설정 시 빠른 OCR (정확도 감소)
 ```
 
 ### 커스텀 아이콘 설정
@@ -167,12 +176,22 @@ cp your_icon.png approval_icon.png
 특정 창을 모니터링에서 제외하려면 `ocr_auto_approver.py`의 `exclude_keywords` 리스트에 추가:
 
 ```python
-# 176-187번 줄
+# 171-185번 줄
 self.exclude_keywords = [
-    'claude auto approver',
-    'chrome',
+    'auto approval complete',  # 알림 팝업 제외
+    'chrome',                  # Chrome 브라우저
     'google chrome',
-    'your_app_name',  # 여기에 추가
+    'nvidia geforce',          # NVIDIA 오버레이
+    'powerpoint',              # PowerPoint
+    'ppt',
+    'microsoft powerpoint',
+    'hwp',                     # 한글 워드프로세서
+    '.hwp',
+    'excel',                   # Excel
+    'microsoft excel',
+    '.xlsx',
+    '.xls',
+    'your_app_name',          # 여기에 추가
 ]
 ```
 
@@ -180,24 +199,59 @@ self.exclude_keywords = [
 
 ### 승인 패턴 (자동 감지되는 문장)
 
-프로그램은 다음과 같은 승인 요청 패턴을 자동으로 인식합니다 (150-174번 줄):
+프로그램은 **질문 + 동작 조합 방식**으로 유연하게 패턴을 인식합니다 (145-182번 줄):
 
+#### 질문 패턴
 ```
-- "Would you like to proceed"
-- "Do you want to proceed"
-- "Would you like to approve"
-- "Do you want to approve"
-- "Do you want to create"
-- "Select an option"
-- "Choose an option"
-- "Yes, and don't ask again"
-- "Yes, and remember"
-- "Approve this action"
-- "Allow this action"
-- "Grant permission"
-- "Proceed with"
-- "Continue with"
+- "do you want"
+- "would you like"
+- "would you"
 ```
+
+#### 동작 패턴
+```
+- "to proceed" / "proceed"
+- "to approve" / "approve"
+- "to create" / "create"
+- "to allow" / "allow"
+- "select"
+- "choose"
+```
+
+#### 특정 패턴 (정확히 일치)
+```
+- "select an option"
+- "choose an option"
+- "yes, and don't ask again"
+- "yes, and remember"
+- "yes, allow all edits"
+- "approve this action"
+- "allow this action"
+- "grant permission"
+- "proceed with"
+- "continue with"
+- "select one of the following"
+- "choose one of the following"
+- "no, and tell claude"
+- "tell claude what to do differently"
+```
+
+**매칭 방식:**
+1. **질문 + 동작** 조합 (예: "do you want" + "to proceed")
+2. **특정 패턴** 정확히 일치
+3. **Fallback**: 질문 또는 동작만 있어도 인식
+
+**인식 예시:**
+- ✅ "Do you want to proceed?"
+- ✅ "Do you want to continue?" (조합 매칭)
+- ✅ "Would you like to approve?"
+- ✅ "Select an option"
+
+**중요**: 패턴 매칭은 다음 조건을 **모두** 만족해야 합니다:
+- 위 패턴 중 하나 이상 포함
+- 줄에 "1." 또는 "1)" 포함
+- 줄에 "2." 또는 "2)" 포함
+- **화살표(❯) 등 특수문자 앞에 있어도 인식**
 
 ### 시스템 창 자동 제외
 
@@ -217,11 +271,30 @@ self.exclude_keywords = [
 
 ### 응답 로직
 
-프로그램은 승인 옵션을 지능적으로 선택합니다 (481-516번 줄):
+프로그램은 승인 옵션을 지능적으로 선택합니다 (507-559번 줄):
 
-- **Option 2가 "No"를 포함** → Option 1 선택
-- **Option 3이 "No, and tell Claude"** → Option 2 선택 (allow all)
-- **기본값**: Option 2 선택 ("Yes, and don't ask again")
+#### 옵션 인식 방식
+- **첫 단어만 추출**: "1. Yes, proceed once" → "yes"
+- **화살표 처리**: "❯ 1. Yes" → "1." 위치 찾기 → "yes"
+- **유연한 형식**: 특수문자, 공백 앞에 있어도 인식
+
+#### 선택 로직
+- **3개 옵션 감지** (1, 2, 3 모두 존재) → **Option 2 선택**
+  - 일반적으로 "Yes, and don't ask again"
+  - 가장 편리한 선택 (재질문 방지)
+
+- **2개 옵션 감지** (1, 2만 존재) → **Option 1 선택**
+  - 일반적으로 "Yes, proceed once"
+  - 더 안전한 선택 (일회성 승인)
+
+**인식 가능한 형식:**
+```
+✅ 1. Yes
+✅ ❯ 1. Yes (화살표)
+✅   1. Yes (공백)
+✅ } 1. Yes (중괄호)
+✅ * 1. Yes (기호)
+```
 
 ## 🔍 문제 해결
 
@@ -233,15 +306,21 @@ self.exclude_keywords = [
    tesseract --version
    ```
 2. 창 제목이 `exclude_keywords`에 포함되어 있지 않은지 확인
-3. OCR 텍스트 추출이 제대로 되고 있는지 로그 확인
-4. `use_key_probe = False`로 설정하고 OCR 모드로 시도
+3. 로그에서 다음 확인:
+   - `[DEBUG] Potential approval dialog detected!` - OCR이 키워드 감지
+   - `[DEBUG] Option detection: has_option_1=True, has_option_2=True` - 옵션 번호 감지
+   - 위 두 조건이 모두 만족되어야 승인 실행
+4. OCR 품질 개선:
+   - 창을 더 크게 만들기
+   - 폰트 크기 증가
+   - 고대비 테마 사용
 
 ### Q: 잘못된 창에서 승인이 실행돼요
 
 **A:** 다음을 시도하세요:
 1. `exclude_keywords`에 해당 프로그램 키워드 추가
-2. `idle_time_threshold` 값을 늘려서 더 긴 Idle 시간 요구
-3. `enable_tab_cycling = False`로 설정해서 액티브 모드 비활성화
+2. `re_approval_cooldown` 값을 늘려서 재승인 간격 증가
+3. 스캔 주기를 늘리기 (776번 줄의 `time.sleep(3)`을 더 큰 값으로)
 
 ### Q: Tesseract 오류가 발생해요
 
@@ -261,11 +340,12 @@ pytesseract.pytesseract.tesseract_cmd = r'당신의\설치\경로\tesseract.exe'
 2. winotify 재설치: `pip install --upgrade winotify`
 3. approval_icon.png 파일이 프로젝트 루트에 있는지 확인
 
-### Q: 중복으로 승인되는 것 같아요
+### Q: 재승인이 필요한데 안 돼요
 
-**A:** 프로그램은 중복 승인 방지 메커니즘이 내장되어 있습니다 (204번 줄):
-- 각 창은 프로그램 실행 중 **한 번만** 승인됩니다
-- 재승인이 필요하면 프로그램을 재시작하세요
+**A:** 프로그램은 시간 기반 재승인 메커니즘이 있습니다 (201-203번 줄):
+- 같은 창은 **10초 쿨다운** 후 재승인 가능
+- 더 빠른 재승인이 필요하면 `re_approval_cooldown` 값을 줄이세요
+- 즉시 재승인이 필요하면 프로그램을 재시작하세요
 
 ## 📁 프로젝트 구조
 
@@ -274,9 +354,11 @@ Claude-Auto-Approver/
 ├── ocr_auto_approver.py        # 메인 OCR 자동 승인 프로그램
 ├── approval_icon.png           # 알림 아이콘 (선택)
 ├── requirements.txt            # Python 의존성
-├── IMPROVEMENTS.md            # 개선 사항 문서
 ├── README.md                  # 이 파일
-└── test_*.py                  # 각종 테스트 스크립트
+├── test_detection.py          # OCR 감지 테스트
+├── test_ocr_with_key.py       # OCR + 키 입력 통합 테스트
+├── test_key_only.py           # 키 입력 기능 테스트
+└── test_*.py                  # 기타 테스트 스크립트
 ```
 
 ## 🧪 테스트
@@ -284,34 +366,38 @@ Claude-Auto-Approver/
 프로젝트에는 다양한 테스트 파일들이 포함되어 있습니다:
 
 ```bash
-# 창 감지 테스트
-python check_pycharm_titles.py
+# OCR 감지 테스트 (창 캡처 + OCR 텍스트 확인)
+python test_detection.py
 
-# 알림 테스트
-python test_approval_notification.py
+# OCR + 키 입력 통합 테스트 (전체 프로세스)
+python test_ocr_with_key.py
 
-# 패턴 인식 테스트
-python test_pattern_recognition.py
+# 키 입력만 테스트 (메모장 등에서 '1' 입력 확인)
+python test_key_only.py
 
-# Claude 창 감지 테스트
-python detect_claude_window.py
+# 배경 알림 테스트
+python test_bg_notification.py
+
+# 현재 창 확인
+python check_current_window.py
 ```
 
 ## 📊 성능 및 최적화
 
-### 패시브 모드
-- **체크 주기**: 2초
-- **OCR 처리 시간**: 창당 약 0.5-1초
-- **CPU 사용률**: 평균 5-10%
-
-### 액티브 모드
-- **탭 전환 속도**: 50ms (조정 가능)
-- **창당 처리 시간**: 약 0.5-1초
-- **최대 순회 시간**: 약 5-10초 (5창 × 10탭 기준)
+### Active OCR 모니터링
+- **스캔 주기**: 3초 (조정 가능)
+- **OCR 처리 시간**: 창당 약 0.3-0.8초
+- **동시 모니터링**: 평균 10-20개 창
+- **CPU 사용률**: 평균 10-20% (OCR 처리 중 spike)
 
 ### 메모리 사용량
-- **기본**: ~50-100MB
-- **OCR 처리 중**: ~100-150MB
+- **기본**: ~80-120MB
+- **OCR 처리 중**: ~150-200MB
+
+### 최적화 팁
+1. **스캔 주기 조절**: `time.sleep(3)`을 더 큰 값으로 (CPU 사용량 감소)
+2. **Fast OCR 모드**: `extract_text_from_image(img, fast_mode=True)` (정확도 감소)
+3. **제외 키워드 추가**: 불필요한 창 모니터링 방지
 
 ## 🔧 고급 사용법
 
@@ -370,24 +456,31 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - 첫 실행 시 테스트 환경에서 동작을 확인하세요
 - 프로덕션 환경에서는 신중하게 사용하세요
 
-## 📈 개선 사항 (v2.0)
+## 📈 최근 개선 사항
 
-### 향상된 필터링 시스템
-- **시스템 창 필터링**: 알림 센터, 작업 표시줄 등 시스템 UI 자동 제외
-- **창 크기 검증**: 최소 100x20 픽셀 이상의 창만 모니터링
-- **중복 방지**: 같은 창에 한 번만 자동 승인 (재시작 전까지)
+### v2.7 (2025-01)
+- **Excel 제외**: Excel 창은 자동으로 모니터링에서 제외
+- **향상된 필터링**: .xlsx, .xls 파일명 패턴도 필터링
 
-### 듀얼 모드 아키텍처
-- **패시브 + 액티브 모드**: 두 가지 감지 방식을 동시에 운용
-- **키 프로브 방식**: OCR보다 빠른 "1" + Backspace 감지
-- **스마트 Idle 감지**: 사용자 활동 패턴 학습
+### v2.6 (2025-01)
+- **화살표 형식 지원**: "❯ 1. Yes" 형식의 Claude Code 대화상자 인식
+- **유연한 패턴 매칭**: 질문 + 동작 조합 방식으로 더 많은 패턴 인식
+- **첫 단어 추출**: "1. Yes, proceed once" → "yes"만 추출하여 OCR 오류 방지
+- **특수문자 처리**: 중괄호, 기호 등 앞에 있어도 옵션 번호 인식
 
-### 개선된 패턴 매칭
-- **문장 기반 감지**: 22개 이상의 승인 패턴 인식
-- **지능형 응답 선택**: 옵션 내용 분석 후 적절한 응답 선택
-- **컨텍스트 인식**: Claude 관련 키워드로 정확도 향상
+### v2.5 (2025-01)
+- **옵션 개수 기반 선택**: 3개 옵션이면 2번, 2개 옵션이면 1번 선택
+- **시간 기반 재승인**: 10초 쿨다운으로 같은 창 재승인 가능
+- **향상된 디버깅**: OCR 텍스트, 옵션 감지 상태 실시간 로깅
+- **알림 개선**: SMS 사운드, 감지된 텍스트 미리보기 추가
+- **필터링 강화**: Chrome, PowerPoint, HWP 등 더 많은 프로그램 제외
 
-자세한 내용은 [IMPROVEMENTS.md](IMPROVEMENTS.md)를 참조하세요.
+### v2.0
+- **Active OCR 모니터링**: 모든 창을 주기적으로 스캔
+- **향상된 필터링**: 시스템 창, 크기 검증, 프로그램별 제외
+- **패턴 매칭 강화**: 22개 이상의 승인 패턴 인식
+- **다중 모니터 지원**: 모든 모니터의 창 동시 모니터링
+- **winotify 알림**: 상세한 Windows 네이티브 알림
 
 ## ⭐ Star History
 
