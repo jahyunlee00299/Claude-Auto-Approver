@@ -50,7 +50,7 @@ def show_notification_popup(title, message, window_info=None, duration=3):
                 app_id="Claude Auto Approver",
                 title=f"✅ {title}",
                 msg=detailed_message,
-                duration="short"  # short (5 sec) or long (25 sec)
+                duration="long"  # short, long
             )
 
             # Add approval icon if exists
@@ -64,14 +64,11 @@ def show_notification_popup(title, message, window_info=None, duration=3):
             else:
                 print(f"[INFO] Icon file not found at {icon_path} - Please save your icon image as approval_icon.png")
 
-            # Set sound - use SMS sound which is louder
-            toast.set_audio(audio.SMS, loop=False)
+            # Set sound
+            toast.set_audio(audio.Default, loop=False)
 
             # Show notification
             toast.show()
-
-            # Give Windows time to process the notification
-            time.sleep(0.5)
 
             print(f"[OK] Winotify notification sent with detailed info")
             return  # Exit early if winotify succeeds
@@ -138,36 +135,17 @@ class OCRAutoApprover:
         self.approval_count = 0
         self.current_hwnd = None
 
-        # Notification queue - collect notifications during scan, show during rest period
-        self.pending_notifications = []
+        # Tab cycling - DISABLED (removed functionality)
+        # Only passive OCR monitoring is active
 
-        # Active OCR monitoring - scans all visible windows
-        # Tab cycling feature is separate (not implemented here)
-
-        # Approval patterns - split into question and action parts for flexible matching
-        # Question patterns (asking for permission)
-        self.question_patterns = [
-            'do you want',
-            'would you like',
-            'would you',
-        ]
-
-        # Action patterns (what's being asked)
-        self.action_patterns = [
-            'to proceed',
-            'proceed',
-            'to approve',
-            'approve',
-            'to create',
-            'create',
-            'to allow',
-            'allow',
-            'select',
-            'choose',
-        ]
-
-        # Additional specific patterns (exact matches)
-        self.specific_patterns = [
+        # Approval patterns - sentence-based for more accurate detection
+        self.approval_patterns = [
+            'would you like to proceed',
+            'do you want to proceed',
+            'would you like to approve',
+            'do you want to approve',
+            'do you want to create',
+            'do you want to',
             'select an option',
             'choose an option',
             'yes, and don\'t ask again',
@@ -176,6 +154,8 @@ class OCRAutoApprover:
             'approve this action',
             'allow this action',
             'grant permission',
+            'would you like to allow',
+            'do you want to allow',
             'proceed with',
             'continue with',
             'select one of the following',
@@ -186,7 +166,8 @@ class OCRAutoApprover:
 
         # Exclude keywords (removed 'editor' to allow Claude Code windows)
         self.exclude_keywords = [
-            'auto approval complete',  # Only exclude notification popups
+            'claude auto approver',  # Don't detect our own notification window
+            'auto approval',  # Don't detect our own notification window
             'chrome',  # Exclude Chrome browser
             'google chrome',  # Exclude Chrome browser
             'nvidia geforce',  # Exclude NVIDIA overlay
@@ -199,14 +180,6 @@ class OCRAutoApprover:
             'microsoft powerpoint',  # Exclude Microsoft PowerPoint
             'hwp',  # Exclude Hangul word processor
             '.hwp',  # Exclude HWP files
-            'hancom',  # Exclude Hancom (Korean)
-            'hanword',  # Exclude Hanword
-            '한글',  # Exclude Hangul (Korean)
-            '한컴',  # Exclude Hancom (Korean)
-            'excel',  # Exclude Excel
-            'microsoft excel',  # Exclude Microsoft Excel
-            '.xlsx',  # Exclude Excel files
-            '.xls',  # Exclude Excel files
         ]
 
         # System window class names to exclude
@@ -225,7 +198,7 @@ class OCRAutoApprover:
 
         # Duplicate prevention - track per window with timestamp for time-based re-approval
         self.approved_windows = {}  # Track {hwnd: last_approval_timestamp}
-        self.re_approval_cooldown = 20  # Seconds before same window can be approved again
+        self.re_approval_cooldown = 30  # Seconds before same window can be approved again
 
         # Current window
         try:
@@ -234,7 +207,7 @@ class OCRAutoApprover:
             self.current_hwnd = None
 
         print("[OK] OCR Auto Approver initialized")
-        print(f"[INFO] Mode: Active OCR monitoring (scans all windows)")
+        print(f"[INFO] Mode: Passive OCR monitoring only")
 
     def is_system_window(self, hwnd):
         """Check if window is a system window (notification center, taskbar, etc.)"""
@@ -436,52 +409,38 @@ class OCRAutoApprover:
             fast_mode: If True, use faster OCR settings with less accuracy
         """
         try:
-            from PIL import ImageEnhance, ImageFilter
-
-            # Pre-processing for better OCR
-            # Convert to grayscale
-            img = img.convert('L')
-
-            # Increase contrast
-            enhancer = ImageEnhance.Contrast(img)
-            img = enhancer.enhance(2.0)
-
-            # Sharpen
-            img = img.filter(ImageFilter.SHARPEN)
-
-            # Increase size for better OCR (larger text = better recognition)
-            width, height = img.size
-            if width < 1200:
-                scale_factor = 1200 / width
-                new_size = (int(width * scale_factor), int(height * scale_factor))
-                img = img.resize(new_size, Image.LANCZOS)
-
             if fast_mode:
-                # Fast mode: use PSM 6 (single block) with better settings
-                custom_config = r'--psm 6 --oem 3 -c tessedit_char_whitelist=0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.,?!():-\' '
+                # Fast mode: use PSM 6 (single block) and lower DPI for speed
+                custom_config = r'--psm 6 --oem 3'
 
-                # Only check bottom 60% where approval dialogs usually are
+                # Resize image to smaller size for faster processing
+                width, height = img.size
+                if width > 800 or height > 600:
+                    ratio = min(800/width, 600/height)
+                    new_size = (int(width * ratio), int(height * ratio))
+                    img = img.resize(new_size, Image.LANCZOS)
+
+                # Only check bottom half where approval dialogs usually are
                 width, height = img.size
                 bottom_region = img.crop((0, int(height * 0.4), width, height))
                 text = pytesseract.image_to_string(bottom_region, lang='eng', config=custom_config)
             else:
-                # Normal mode: more thorough with better config
-                custom_config = r'--psm 6 --oem 3'
-                text = pytesseract.image_to_string(img, lang='eng', config=custom_config)
+                # Normal mode: more thorough
+                text = pytesseract.image_to_string(img, lang='eng')
 
                 # If too little text, try bottom half
                 if len(text) < 50:
                     width, height = img.size
                     bottom_region = img.crop((0, int(height * 0.5), width, height))
-                    text = pytesseract.image_to_string(bottom_region, lang='eng', config=custom_config)
+                    text = pytesseract.image_to_string(bottom_region, lang='eng')
 
             return text
 
-        except Exception as e:
+        except Exception:
             return ""
 
     def check_approval_pattern(self, text):
-        """Check if text contains approval pattern - RELAXED detection for better recognition
+        """Check if text contains approval pattern - relaxed detection
 
         Returns:
             bool: True if approval pattern detected, False otherwise
@@ -494,58 +453,21 @@ class OCRAutoApprover:
         # Remove extra whitespace and normalize text
         text_normalized = ' '.join(text_lower.split())
 
-        # RELAXED: Check for option numbers (more flexible)
-        # Look for "1" followed by dot/paren and "2" followed by dot/paren anywhere in text
-        has_option_1 = False
-        has_option_2 = False
-        has_numbered_options = False
-
-        for line in text.split('\n'):
-            line_stripped = line.strip().lower()
-
-            # More flexible option detection - check if line contains option markers
-            # Match: "1.", "1)", or bullet + "1."
-            if '1.' in line_stripped or '1)' in line_stripped:
-                # Make sure it's not part of a larger number like "11." or "21."
-                import re
-                if re.search(r'(?:^|[^\d])1[.)]', line_stripped):
-                    has_option_1 = True
-
-            if '2.' in line_stripped or '2)' in line_stripped:
-                if re.search(r'(?:^|[^\d])2[.)]', line_stripped):
-                    has_option_2 = True
-
-        # Check if we have at least one option (relaxed from requiring both)
-        has_numbered_options = has_option_1 or has_option_2
-
-        # Debug: Show detection status (reduced verbosity)
-        if has_numbered_options:
-            print(f"[DEBUG] Option detection: has_option_1={has_option_1}, has_option_2={has_option_2}")
-
-        # Check for specific patterns (exact matches)
-        for pattern in self.specific_patterns:
+        # Check for sentence patterns
+        for pattern in self.approval_patterns:
             if pattern in text_normalized:
-                print(f"[DEBUG] Matched specific pattern: '{pattern}'")
-                # If we found a specific pattern AND have numbered options, approve
-                if has_numbered_options:
-                    return True
+                print(f"[DEBUG] Matched sentence pattern: '{pattern}'")
+                return True
 
-        # Check for question + action combination
-        has_question = any(q in text_normalized for q in self.question_patterns)
-        has_action = any(a in text_normalized for a in self.action_patterns)
+        # Relaxed check: just look for common approval keywords
+        approval_keywords = ['yes', 'no', 'approve', 'proceed', 'allow', 'select', 'choose', 'permission', 'create', 'want to', 'would you', 'do you']
+        has_keyword = any(keyword in text_lower for keyword in approval_keywords)
 
-        # RELAXED: Accept if we have (question OR action) AND numbered options
-        if (has_question or has_action) and has_numbered_options:
-            if has_question and has_action:
-                matched_q = [q for q in self.question_patterns if q in text_normalized]
-                matched_a = [a for a in self.action_patterns if a in text_normalized]
-                print(f"[DEBUG] Matched question+action: {matched_q[0]} + {matched_a[0]}")
-            elif has_question:
-                matched_q = [q for q in self.question_patterns if q in text_normalized]
-                print(f"[DEBUG] Matched question: {matched_q[0]}")
-            else:
-                matched_a = [a for a in self.action_patterns if a in text_normalized]
-                print(f"[DEBUG] Matched action: {matched_a[0]}")
+        # Check for option numbers (more relaxed)
+        has_numbers = ('1' in text and '2' in text) or ('1.' in text) or ('2.' in text) or ('1)' in text)
+
+        if has_keyword and has_numbers:
+            print(f"[DEBUG] Matched approval keyword + numbers (relaxed)")
             return True
 
         return False
@@ -553,79 +475,39 @@ class OCRAutoApprover:
     def determine_response_key(self, text):
         """Determine which key to press based on the options in the text
 
-        Logic:
-        - Only checks first word after option number (e.g., "1. Yes" -> "yes")
-        - If 3 options (1, 2, 3): Select option 2 (usually "yes, and don't ask again")
-        - If 2 options (1, 2): Select option 1 (safer, one-time approval)
-
         Returns:
             str: '1' or '2' depending on the options
         """
         if not text:
-            return '1'  # Default to option 1 (safer choice)
+            return '2'  # Default
 
         text_lower = text.lower()
+
+        # Check if option 3 contains "no, and tell claude"
+        # This means options 1 or 2 are "yes" options
+        has_option_3_no = 'no, and tell claude' in text_lower or 'tell claude what to do differently' in text_lower
+
+        # Check if option 2 contains "no"
         lines = text.split('\n')
-
-        # Extract option keywords (only first word after number)
-        option_1_keyword = ''
-        option_2_keyword = ''
-        option_3_keyword = ''
-        has_option_3 = False
-
+        option_2_text = ''
         for line in lines:
-            line_stripped = line.strip().lower()
+            line_stripped = line.strip()
+            if line_stripped.startswith('2.') or line_stripped.startswith('2)'):
+                option_2_text = line_stripped.lower()
+                break
 
-            # Extract first word after option number (handles "❯ 1. Yes" format)
-            if '1.' in line_stripped or '1)' in line_stripped:
-                # Find position of "1." or "1)"
-                if '1.' in line_stripped:
-                    pos = line_stripped.index('1.') + 2
-                else:
-                    pos = line_stripped.index('1)') + 2
-
-                # Get text after "1." or "1)"
-                after_number = line_stripped[pos:].strip()
-                # Extract first word (up to comma, space, or end)
-                first_word = after_number.split(',')[0].split()[0] if after_number else ''
-                option_1_keyword = first_word
-
-            elif '2.' in line_stripped or '2)' in line_stripped:
-                if '2.' in line_stripped:
-                    pos = line_stripped.index('2.') + 2
-                else:
-                    pos = line_stripped.index('2)') + 2
-
-                after_number = line_stripped[pos:].strip()
-                first_word = after_number.split(',')[0].split()[0] if after_number else ''
-                option_2_keyword = first_word
-
-            elif '3.' in line_stripped or '3)' in line_stripped:
-                if '3.' in line_stripped:
-                    pos = line_stripped.index('3.') + 2
-                else:
-                    pos = line_stripped.index('3)') + 2
-
-                after_number = line_stripped[pos:].strip()
-                first_word = after_number.split(',')[0].split()[0] if after_number else ''
-                option_3_keyword = first_word
-                has_option_3 = True
-
-        print(f"[DEBUG] Option 1 keyword: '{option_1_keyword}' (full line trimmed)")
-        print(f"[DEBUG] Option 2 keyword: '{option_2_keyword}' (full line trimmed)")
-        if has_option_3:
-            print(f"[DEBUG] Option 3 keyword: '{option_3_keyword}' (full line trimmed)")
-        print(f"[DEBUG] Has 3 options: {has_option_3}")
-
-        # MAIN LOGIC: Check if there are 3 options
-        if has_option_3:
-            # 3 options detected -> Select option 2 (usually "yes, and don't ask again")
-            print(f"[DEBUG] 3 options detected - selecting option 2")
-            return '2'
-        else:
-            # 2 options detected -> Select option 1 (safer, one-time approval)
-            print(f"[DEBUG] 2 options detected - selecting option 1")
+        # If option 2 has "no" in it, choose option 1
+        if 'no' in option_2_text and ('2.' in text_lower or '2)' in text_lower):
+            print(f"[DEBUG] Option 2 contains 'no' - selecting option 1")
             return '1'
+
+        # If option 3 exists with "no and tell claude", we want option 2 (allow all)
+        if has_option_3_no:
+            print(f"[DEBUG] Option 3 is 'no' - selecting option 2 (allow all)")
+            return '2'
+
+        # Default: option 2 for "yes and don't ask again"
+        return '2'
 
     def should_approve(self, hwnd):
         """Check if should auto-approve (with time-based cooldown)"""
@@ -644,14 +526,13 @@ class OCRAutoApprover:
             remaining = int(self.re_approval_cooldown - time_since_approval)
             return False  # Still in cooldown
 
-    def send_approval(self, hwnd, window_title, response_key, detected_text=''):
+    def send_approval(self, hwnd, window_title, response_key='2'):
         """Send response key to window and show notification
 
         Args:
             hwnd: Window handle
             window_title: Window title
-            response_key: Key to send ('1' or '2') - REQUIRED, no default
-            detected_text: OCR detected text (for notification)
+            response_key: Key to send ('1' or '2')
         """
         # Convert window title to ASCII-safe string for console output
         try:
@@ -663,40 +544,8 @@ class OCRAutoApprover:
         print(f"[INFO] Sending key: '{response_key}'")
 
         try:
-            # STEP 1: Activate window FIRST
-            print(f"[INFO] Activating target window...")
-            try:
-                win32gui.SetForegroundWindow(hwnd)
-            except:
-                pass
-
-            time.sleep(0.3)  # Window activation delay
-
-            # STEP 2: Send the appropriate key
-            print(f"[INFO] Sending '{response_key}' to select option {response_key}")
-            win32api.keybd_event(ord(response_key), 0, 0, 0)
-            time.sleep(0.05)
-            win32api.keybd_event(ord(response_key), 0, win32con.KEYEVENTF_KEYUP, 0)
-
-            self.approval_count += 1
-            self.approved_windows[hwnd] = time.time()  # Mark this window as approved with timestamp
-
-            timestamp = time.strftime('%H:%M:%S')
-            print(f"[SUCCESS] Approval completed at {timestamp}")
-            print(f"[INFO] Total approvals so far: {self.approval_count}")
-            print(f"[INFO] Window added to cooldown list ({self.re_approval_cooldown}s before next approval)")
-
-            # STEP 3: Return to original window
-            if self.current_hwnd:
-                time.sleep(0.2)
-                try:
-                    win32gui.SetForegroundWindow(self.current_hwnd)
-                    time.sleep(0.3)  # Wait for window switch to complete
-                except:
-                    pass
-
-            # STEP 4: Queue notification to show later (during rest period)
-            print(f"[INFO] Queueing notification for rest period...")
+            # Show Windows notification using winotify
+            print(f"[INFO] Creating Windows notification...")
 
             # Determine window type
             window_type = "Unknown"
@@ -717,36 +566,60 @@ class OCRAutoApprover:
                 else:
                     window_type = window_title[:20]
 
-            # Prepare notification data
-            notification_timestamp = time.strftime('%H:%M:%S')
+            # Show Tkinter popup notification
+            try:
+                print(f"[INFO] Showing popup notification...")
 
-            # Prepare detected text preview - show MORE text
-            text_preview = ''
-            if detected_text:
-                lines = [line.strip() for line in detected_text.split('\n') if line.strip()]
-                text_preview = '\n'.join(lines[:8])  # Show first 8 lines (increased from 3)
-                if len(text_preview) > 400:
-                    text_preview = text_preview[:400] + '...'
+                # Add timestamp
+                timestamp = time.strftime('%H:%M:%S')
 
-            # Build notification message - simple format
-            if text_preview:
-                notification_msg = f"Window: {safe_title[:40]} | {text_preview}"
-            else:
-                notification_msg = f"Window: {safe_title[:40]} | (No text)"
+                # Show popup notification (non-blocking)
+                show_notification_popup(
+                    "Auto Approval Complete",
+                    f"Option '{response_key}' was automatically selected",
+                    window_info=safe_title[:100],  # Use the full window title
+                    duration=3
+                )
 
-            # Add to queue
-            self.pending_notifications.append({
-                'title': "Auto Approval Complete",
-                'message': notification_msg,
-                'window_info': safe_title[:100],
-                'window_type': window_type,
-                'timestamp': notification_timestamp,
-                'response_key': response_key
-            })
+                print(f"[SUCCESS] Popup notification shown for: {window_type} at {timestamp}")
 
+                # Small delay
+                time.sleep(0.2)
+
+            except Exception as e:
+                print(f"[WARNING] Notification failed: {e}")
+                import traceback
+                traceback.print_exc()
+
+            # Activate window
+            try:
+                win32gui.SetForegroundWindow(hwnd)
+            except:
+                pass
+
+            time.sleep(0.3)  # Window activation delay
+
+            # Send the appropriate key
+            print(f"[INFO] Sending '{response_key}' to select option {response_key}")
+            win32api.keybd_event(ord(response_key), 0, 0, 0)
+            time.sleep(0.05)
+            win32api.keybd_event(ord(response_key), 0, win32con.KEYEVENTF_KEYUP, 0)
+
+            self.approval_count += 1
+            self.approved_windows[hwnd] = time.time()  # Mark this window as approved with timestamp
+
+            timestamp = time.strftime('%H:%M:%S')
             print(f"[SUCCESS] Approval completed at {timestamp}")
-            print(f"[SUCCESS] Notification queued - will show during rest period")
-            print(f"[SUCCESS] *** APPROVAL COMPLETED - OPTION '{response_key}' SELECTED ***\n")
+            print(f"[INFO] Total approvals so far: {self.approval_count}")
+            print(f"[INFO] Window added to cooldown list ({self.re_approval_cooldown}s before next approval)\n")
+
+            # Return to original window
+            if self.current_hwnd:
+                time.sleep(0.2)
+                try:
+                    win32gui.SetForegroundWindow(self.current_hwnd)
+                except:
+                    pass
 
             return True
 
@@ -759,9 +632,9 @@ class OCRAutoApprover:
         print("\n" + "="*60)
         print("OCR Auto Approver")
         print("="*60)
-        print("\n=== ACTIVE OCR MONITORING ===")
-        print("\nMode: Active OCR (All Windows)")
-        print("  - Scans ALL visible windows with OCR")
+        print("\n=== PASSIVE OCR MONITORING ===")
+        print("\nMode: Passive OCR Only")
+        print("  - Monitors current active window with OCR")
         print("  - Detects approval dialogs automatically")
         print("  - Auto-responds when pattern detected")
         print("  - Excludes: Chrome, PowerPoint, HWP, System windows")
@@ -780,116 +653,50 @@ class OCRAutoApprover:
             print(f"  ... and {len(initial_windows) - 10} more")
         print()
 
-        active_check_count = 0
+        passive_check_count = 0
         last_status_time = time.time()
 
         while self.running:
             try:
-                # Active OCR monitoring - scans all visible windows
+                # Passive OCR monitoring - monitors current foreground window
                 # Show periodic status update (every 30 seconds)
                 current_time = time.time()
                 if current_time - last_status_time >= 30:
-                    print(f"[STATUS] Active monitoring | Approvals: {self.approval_count} | Checks: {active_check_count}")
+                    print(f"[STATUS] Passive monitoring active | Approvals: {self.approval_count} | Checks: {passive_check_count}")
                     last_status_time = current_time
 
-                # Get all target windows
-                target_windows = self.find_target_windows(verbose=False)
+                # Get current foreground window
+                try:
+                    hwnd = win32gui.GetForegroundWindow()
+                    if hwnd and self.should_approve(hwnd):
+                        title = win32gui.GetWindowText(hwnd)
 
-                # Scan each window
-                for win in target_windows:
-                    hwnd = win['hwnd']
-                    title = win['title']
+                        # Skip system windows and excluded keywords
+                        if title and not self.is_system_window(hwnd):
+                            title_lower = title.lower()
+                            if not any(exc in title_lower for exc in self.exclude_keywords):
+                                # Capture and OCR check
+                                passive_check_count += 1
+                                img = self.capture_window(hwnd)
+                                if img:
+                                    text = self.extract_text_from_image(img, fast_mode=False)
+                                    if self.check_approval_pattern(text):
+                                        # Determine response key
+                                        response_key = self.determine_response_key(text)
 
-                    try:
-                        # Check if should approve (cooldown check)
-                        if hwnd and self.should_approve(hwnd):
-                            # Skip system windows and excluded keywords
-                            if title and not self.is_system_window(hwnd):
-                                title_lower = title.lower()
-                                if not any(exc in title_lower for exc in self.exclude_keywords):
-                                    # Capture and OCR check
-                                    active_check_count += 1
-                                    img = self.capture_window(hwnd)
-                                    if img:
-                                        text = self.extract_text_from_image(img, fast_mode=True)  # Use fast mode to reduce CPU usage
+                                        timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+                                        print(f"\n{'='*70}")
+                                        print(f"[{timestamp}] APPROVAL REQUEST DETECTED")
+                                        print(f"{'='*70}")
+                                        print(f"Window Title: {title[:60]}")
+                                        print(f"Action: Sending '{response_key}'")
+                                        print(f"{'='*70}\n")
+                                        self.send_approval(hwnd, title, response_key)
+                except Exception as e:
+                    pass  # Silent fail for passive monitoring
 
-                                        # Debug: Print raw OCR text when approval keywords detected
-                                        if text and ('do you want' in text.lower() or 'would you' in text.lower() or 'proceed' in text.lower()):
-                                            print(f"\n[DEBUG] Potential approval dialog detected!")
-                                            print(f"[DEBUG] OCR Text Length: {len(text)}")
-                                            print(f"[DEBUG] OCR Text (first 10 non-empty lines):")
-                                            line_count = 0
-                                            for line in text.split('\n'):
-                                                if line.strip():
-                                                    print(f"  {line.strip()[:80]}")
-                                                    line_count += 1
-                                                    if line_count >= 10:
-                                                        break
-
-                                        if self.check_approval_pattern(text):
-                                            # Determine response key
-                                            response_key = self.determine_response_key(text)
-
-                                            timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-
-                                            # Safe title for console output
-                                            try:
-                                                safe_title = title[:60].encode('ascii', 'ignore').decode('ascii')
-                                            except:
-                                                safe_title = "Window with special characters"
-
-                                            # Safe text preview
-                                            try:
-                                                safe_text = text[:200].encode('ascii', 'ignore').decode('ascii')
-                                            except:
-                                                safe_text = "[text contains special characters]"
-
-                                            print(f"\n{'='*70}")
-                                            print(f"[{timestamp}] APPROVAL REQUEST DETECTED (Active Scan)")
-                                            print(f"{'='*70}")
-                                            print(f"Window Title: {safe_title}")
-                                            print(f"Action: Sending '{response_key}'")
-                                            print(f"\n=== Full Detected Text (first 15 lines) ===")
-                                            line_count = 0
-                                            for line in text.split('\n'):
-                                                if line.strip():
-                                                    safe_line = line.strip()[:100]
-                                                    try:
-                                                        safe_line = safe_line.encode('ascii', 'ignore').decode('ascii')
-                                                    except:
-                                                        pass
-                                                    print(f"  {safe_line}")
-                                                    line_count += 1
-                                                    if line_count >= 15:
-                                                        break
-                                            print(f"{'='*70}\n")
-                                            self.send_approval(hwnd, title, response_key, detected_text=text)
-                    except Exception as e:
-                        pass  # Silent fail for individual window
-
-                # SHOW NOTIFICATIONS during rest period (after all window scans complete)
-                if self.pending_notifications:
-                    print(f"\n[INFO] Window scan complete. Showing {len(self.pending_notifications)} queued notification(s)...")
-
-                    for notification in self.pending_notifications:
-                        try:
-                            show_notification_popup(
-                                notification['title'],
-                                notification['message'],
-                                window_info=notification['window_info'],
-                                duration=3
-                            )
-                            print(f"[SUCCESS] Notification shown for: {notification['window_type']} at {notification['timestamp']}")
-                            print(f"[SUCCESS] Option '{notification['response_key']}' was selected")
-                        except Exception as e:
-                            print(f"[WARNING] Failed to show notification: {e}")
-
-                    # Clear the queue
-                    self.pending_notifications.clear()
-                    print(f"[INFO] All notifications shown. Check Windows Action Center!\n")
-
-                # Check every 10 seconds (slower to reduce CPU usage)
-                time.sleep(10)
+                # Check every 2 seconds
+                time.sleep(2)
 
             except Exception as e:
                 print(f"[ERROR] Monitoring error: {e}")

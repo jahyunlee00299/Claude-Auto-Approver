@@ -1,0 +1,113 @@
+======================================================================
+All Visible Windows
+======================================================================
+Title: NVIDIA GeForce Overlay DT
+  Class: CEF-OSC-WIDGET
+  Size: 1920x1080
+  HWND: 66332
+
+Title: Claude-Auto-Approver
+  Class: SunAwtFrame
+  Size: 1936x1064
+  HWND: 2690072
+
+Title: closed-loop
+  Class: SunAwtFrame
+  Size: 1936x1064
+  HWND: 590794
+
+Title:  Graph Axis Modification
+  Class: ConsoleWindowClass
+  Size: 993x519
+  HWND: 8261290
+
+Title: -      __(, ) - JH - PowerPoint
+  Class: PPTFrameClass
+  Size: 1674x719
+  HWND: 5050106
+
+Title: _   .hwp [C:\Users\Jahyun\OneDrive - \  [Labtop]\Moonseo\1. 
+  Class: HwndWrapper[Hwp.exe;;b705a11d-0ba4-441e-b963-e15b1ca20c77]
+  Size: 160x28
+  HWND: 7605070
+
+Title:  Ribose team  - ManUA Substrate condition - Asana - Chrome
+  Class: Chrome_WidgetWin_1
+  Size: 1936x1064
+  HWND: 68512
+
+Title: find_nadh_concentration 
+  Class: #32770
+  Size: 435x587
+  HWND: 4853484
+
+Title: 
+  Class: EVA_Window_Dblclk
+  Size: 160x28
+  HWND: 4852946
+
+Title: _SoftwareUpdateNotificationService_Window
+  Class: #32770
+  Size: 0x0
+  HWND: 68368
+
+Title: B&O Audio Control
+  Class: Windows.UI.Core.CoreWindow
+  Size: 1920x1048
+  HWND: 1707296
+
+Title: B&O Audio Control
+  Class: ApplicationFrameWindow
+  Size: 1936x1064
+  HWND: 590466
+
+Title: 
+  Class: Windows.UI.Core.CoreWindow
+  Size: 1920x1048
+  HWND: 199840
+
+Title: 
+  Class: ApplicationFrameWindow
+  Size: 1936x1064
+  HWND: 789766
+
+Title: NVIDIA GeForce Overlay
+  Class: CEF-OSC-WIDGET
+  Size: 1920x1080
+  HWND: 66308
+
+Title: Microsoft Text Input Application
+  Class: Windows.UI.Core.CoreWindow
+  Size: 1920x1080
+  HWND: 262254
+
+Title:  
+  Class: ConsoleWindowClass
+  Size: 160x28
+  HWND: 1313966
+
+Title: 2025 teammeeting - PowerPoint
+  Class: PPTFrameClass
+  Size: 160x28
+  HWND: 4132156
+
+Title: 2025+_+_2_250924PM15 - PowerPoint
+  Class: PPTFrameClass
+  Size: 160x28
+  HWND: 2362660
+
+Title: 
+  Class: EVA_Window_Dblclk
+  Size: 160x28
+  HWND: 67552
+
+Title: Jahyun
+  Class: CabinetWClass
+  Size: 160x28
+  HWND: 263814
+
+Title: Program Manager
+  Class: Progman
+  Size: 1920x1080
+  HWND: 197134
+
