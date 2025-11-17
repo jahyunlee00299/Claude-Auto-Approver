@@ -1,0 +1,175 @@
+======================================================================
+OCR-based Claude Auto Approver
+======================================================================
+
+Features:
+  - Monitors all visible windows via screen OCR
+  - Detects approval prompts from Claude Code
+  - Auto-inputs '1' (NO Enter key)
+  - Shows notifications
+
+Requirements:
+  - Tesseract OCR must be installed
+  - Windows must be visible (not minimized)
+
+Exit: Ctrl+C
+======================================================================
+
+[OK] OCR Auto Approver initialized
+[INFO] Mode: Active OCR monitoring (scans all windows)
+
+Found 11 windows to monitor:
+  1. [2690072] Claude-Auto-Approver (pos: -8,-8)
+  2. [67552]  (pos: 234,229)
+  3. [590794] closed-loop  auto_monitor.py (pos: -8,-8)
+  4. [659618] PEAK_SUMMARY - Excel (pos: -8,-8)
+  5. [17633374] 251110_PA3_down(0.2uM)_all enzymes (1) - Excel (pos: -8,-8)
+  6. [1313966]   (pos: 78,78)
+  7. [9637934] Revision  (pos: 424,241)
+  8. [593854] PeakPicker  README.md (pos: -8,-8)
+  9. [5705810] Instrument 1 (offline): Data Analysis  (pos: -8,-8)
+  10. [13242412] FBE_ (pos: 973,60)
+  11. [263814]  (pos: 829,169)
+
+============================================================
+OCR Auto Approver
+============================================================
+
+=== ACTIVE OCR MONITORING ===
+
+Mode: Active OCR (All Windows)
+  - Scans ALL visible windows with OCR
+  - Detects approval dialogs automatically
+  - Auto-responds when pattern detected
+  - Excludes: Chrome, PowerPoint, HWP, System windows
+
+Press Ctrl+C to stop
+
+[INFO] Scanning for target windows...
+[OK] OCR Auto Approver started
+[OK] Found 11 target windows:
+  1. Claude-Auto-Approver (1936x1064)
+  2.  (413x545)
+  3. closed-loop  auto_monitor.py (1936x1064)
+  4. PEAK_SUMMARY - Excel (1936x1064)
+  5. 251110_PA3_down(0.2uM)_all enzymes (1) - Excel (1936x1064)
+  6.   (993x519)
+  7. Revision  (1036x741)
+  8. PeakPicker  README.md (1936x1064)
+  9. Instrument 1 (offline): Data Analysis  (1936x1064)
+  10. FBE_ (380x718)
+  ... and 1 more
+
+
+[DEBUG] Potential approval dialog detected!
+[DEBUG] OCR Text Length: 1771
+[DEBUG] OCR Text (first 10 non-empty lines):
+  a
+  mM
+  i
+  %
+  acy
+  Z
+  <
+  anmey Db & :
+  O se8ev ¢ç auto_monitorpy x i a
+[DEBUG] Option detection: has_option_1=False, has_option_2=True
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=True, has_option_2=True
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+
+[DEBUG] Potential approval dialog detected!
+[DEBUG] OCR Text Length: 1771
+[DEBUG] OCR Text (first 10 non-empty lines):
+  a
+  mM
+  i
+  %
+  acy
+  Z
+  <
+  anmey Db & :
+  O se8ev ¢ç auto_monitorpy x i a
+[DEBUG] Option detection: has_option_1=False, has_option_2=True
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=True, has_option_2=True
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=False, has_option_2=True
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=False, has_option_2=True
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=True, has_option_2=True
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[STATUS] Active monitoring | Approvals: 0 | Checks: 33
+[DEBUG] Option detection: has_option_1=False, has_option_2=True
+[DEBUG] Option detection: has_option_1=False, has_option_2=True
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=True, has_option_2=True
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=True, has_option_2=True
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=False, has_option_2=True
+[DEBUG] Option detection: has_option_1=False, has_option_2=True
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=True, has_option_2=True
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=False, has_option_2=True
+[DEBUG] Option detection: has_option_1=False, has_option_2=True
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[STATUS] Active monitoring | Approvals: 0 | Checks: 66
+[DEBUG] Option detection: has_option_1=True, has_option_2=True
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=False, has_option_2=True
+[DEBUG] Option detection: has_option_1=False, has_option_2=True
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=True, has_option_2=True
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=False, has_option_2=True
+[DEBUG] Option detection: has_option_1=False, has_option_2=True
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=True, has_option_2=True
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=False, has_option_2=True
+[DEBUG] Option detection: has_option_1=False, has_option_2=True
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[STATUS] Active monitoring | Approvals: 0 | Checks: 99
+[DEBUG] Option detection: has_option_1=True, has_option_2=True
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=False, has_option_2=True
+[DEBUG] Option detection: has_option_1=False, has_option_2=True
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=True, has_option_2=True
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=False, has_option_2=True
+[DEBUG] Option detection: has_option_1=False, has_option_2=True
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=False, has_option_2=False
+[DEBUG] Option detection: has_option_1=True, has_option_2=True

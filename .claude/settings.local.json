@@ -23,7 +23,10 @@
       "Bash(copy \"new icon.png\" approval_icon.png)",
       "Bash(chmod:*)",
       "Bash(timeout 2 python:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(windows_list.txt)",
+      "Bash(timeout 30 python:*)",
+      "Bash(./start_ocr_approver.bat)"
     ],
     "deny": [],
     "ask": []

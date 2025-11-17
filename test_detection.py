@@ -1,55 +1,49 @@
 #!/usr/bin/env python3
 """
-Test if OCR Auto Approver can detect Question window
+Test script to check if auto-approver is detecting this window
 """
-import win32gui
 import time
+import win32gui
 
-def find_all_windows():
-    """Find all visible windows"""
-    result = []
+def main():
+    # Get this window's handle
+    current_window = win32gui.GetForegroundWindow()
+    window_title = win32gui.GetWindowText(current_window)
 
-    def callback(hwnd, windows):
-        if win32gui.IsWindowVisible(hwnd):
-            title = win32gui.GetWindowText(hwnd)
-            if title:
-                windows.append(title)
-        return True
+    print("=" * 70)
+    print("WINDOW DETECTION TEST")
+    print("=" * 70)
+    print(f"\nCurrent window title: {window_title}")
+    print(f"Current window handle: {current_window}")
 
-    win32gui.EnumWindows(callback, result)
-    return result
-
-print("="*70)
-print("Window Detection Test")
-print("="*70)
-print("\nPlease make sure the Question dialog is open!")
-print("Waiting 3 seconds...")
-time.sleep(3)
-
-print("\nSearching for windows...")
-windows = find_all_windows()
-
-print(f"\nFound {len(windows)} windows:")
-print("-"*70)
-
-question_found = False
-for i, title in enumerate(windows, 1):
-    # Check if it contains approval keywords
-    title_lower = title.lower()
-    is_approval = any(kw in title_lower for kw in ['question', 'approve', 'confirm', 'permission', 'allow'])
-
-    if is_approval:
-        print(f"{i}. [{title}] <- WOULD BE DETECTED")
-        question_found = True
+    # Check if this is the MINGW terminal where Claude is running
+    if 'MINGW' in window_title.upper() or 'BASH' in window_title.upper():
+        print("\n✓ This appears to be a MINGW/Bash terminal")
+        print("  The auto-approver should be monitoring this window")
     else:
-        safe_title = title.encode('ascii', 'ignore').decode('ascii')
-        print(f"{i}. {safe_title[:60]}")
+        print("\n✗ This does not appear to be the expected terminal type")
 
-print("-"*70)
+    print("\n" + "=" * 70)
+    print("TEST: Creating an approval dialog simulation")
+    print("=" * 70)
+    print("\nThis message simulates an approval request:")
+    print("\n  Do you want to proceed?")
+    print("  ❯ 1. Yes")
+    print("    2. No")
+    print("\nIf the auto-approver is working, it should detect this pattern")
+    print("and automatically press '2' within a few seconds.")
+    print("\nWaiting 10 seconds to see if auto-approval happens...")
 
-if question_found:
-    print("\n✓ Found approval window(s)!")
-    print("OCR Auto Approver should detect these.")
-else:
-    print("\n✗ No approval windows found!")
-    print("Make sure the Question dialog is visible and not minimized.")
+    for i in range(10, 0, -1):
+        print(f"  {i} seconds remaining...")
+        time.sleep(1)
+
+    print("\n" + "=" * 70)
+    print("TEST COMPLETE")
+    print("=" * 70)
+    print("\nDid the auto-approver detect and respond to the approval dialog?")
+    print("Check if you received a notification or saw automatic input.")
+    print("\nIf not, the OCR might not be recognizing the text properly.")
+
+if __name__ == "__main__":
+    main()
