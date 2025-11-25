@@ -13,14 +13,7 @@ class ApprovalPatterns:
     # Required question pattern
     question_pattern: str = 'do you want to proceed'
 
-    # Required option patterns (option number + "yes")
-    option_1_pattern: str = '1. yes'
-    option_2_pattern: str = '2. yes'
-
-    # Optional: detect 3-option dialog
-    option_3_pattern: str = '3. no'
-
-    # Alternative patterns for OCR errors
+    # Option 1: always "Yes"
     option_1_alternatives: List[str] = field(default_factory=lambda: [
         '1. yes',
         '1) yes',
@@ -29,13 +22,22 @@ class ApprovalPatterns:
         '1, yes',
     ])
 
-    option_2_alternatives: List[str] = field(default_factory=lambda: [
+    # Option 2: "Yes, and don't ask again" (3-option) or "Type here" (2-option)
+    option_2_yes_alternatives: List[str] = field(default_factory=lambda: [
         '2. yes',
         '2) yes',
         '2.yes',
         '2, yes',
     ])
 
+    option_2_type_alternatives: List[str] = field(default_factory=lambda: [
+        '2. type',
+        '2) type',
+        '2.type',
+        '2, type',
+    ])
+
+    # Option 3: "No" (only in 3-option dialogs)
     option_3_alternatives: List[str] = field(default_factory=lambda: [
         '3. no',
         '3) no',
