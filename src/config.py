@@ -8,45 +8,39 @@ from typing import List
 
 @dataclass
 class ApprovalPatterns:
-    """Approval pattern configuration"""
+    """Approval pattern configuration - Strict Claude Code detection"""
 
-    # Question patterns (asking for permission)
-    question_patterns: List[str] = field(default_factory=lambda: [
-        'do you want',
-        'would you like',
-        'would you',
+    # Required question pattern
+    question_pattern: str = 'do you want to proceed'
+
+    # Required option patterns (option number + "yes")
+    option_1_pattern: str = '1. yes'
+    option_2_pattern: str = '2. yes'
+
+    # Optional: detect 3-option dialog
+    option_3_pattern: str = '3. no'
+
+    # Alternative patterns for OCR errors
+    option_1_alternatives: List[str] = field(default_factory=lambda: [
+        '1. yes',
+        '1) yes',
+        '1.yes',
+        '> 1. yes',
+        '1, yes',
     ])
 
-    # Action patterns (what's being asked)
-    action_patterns: List[str] = field(default_factory=lambda: [
-        'to proceed',
-        'proceed',
-        'to approve',
-        'approve',
-        'to create',
-        'create',
-        'to allow',
-        'allow',
-        'select',
-        'choose',
+    option_2_alternatives: List[str] = field(default_factory=lambda: [
+        '2. yes',
+        '2) yes',
+        '2.yes',
+        '2, yes',
     ])
 
-    # Specific patterns (exact matches)
-    specific_patterns: List[str] = field(default_factory=lambda: [
-        'select an option',
-        'choose an option',
-        "yes, and don't ask again",
-        'yes, and remember',
-        'yes, allow all edits',
-        'approve this action',
-        'allow this action',
-        'grant permission',
-        'proceed with',
-        'continue with',
-        'select one of the following',
-        'choose one of the following',
-        'no, and tell claude',
-        'tell claude what to do differently',
+    option_3_alternatives: List[str] = field(default_factory=lambda: [
+        '3. no',
+        '3) no',
+        '3.no',
+        '3, no',
     ])
 
 
