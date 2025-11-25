@@ -7,3 +7,4 @@ watchdog>=3.0.0
 colorama>=0.4.6
 pytesseract>=0.3.10
 winotify>=1.1.0; sys_platform == 'win32'
+pystray>=0.19.4

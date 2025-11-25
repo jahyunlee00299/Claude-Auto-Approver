@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 OCR Auto Approver - OCR로 승인 요청 감지 + 자동 "1" 입력
+With System Tray Icon Support
 """
 import sys
 import time
@@ -16,6 +17,15 @@ import pytesseract
 import io
 import subprocess
 import os
+
+# System tray icon support
+try:
+    import pystray
+    from pystray import MenuItem as item
+    TRAY_AVAILABLE = True
+except ImportError:
+    TRAY_AVAILABLE = False
+    print("[WARNING] pystray not installed. Tray icon disabled. Install with: pip install pystray")
 
 # No UTF-8 configuration - use ASCII only for output to avoid encoding issues
 
@@ -132,11 +142,17 @@ def show_notification_popup(title, message, window_info=None, duration=3):
 class OCRAutoApprover:
     """OCR-based approval detection and auto-input"""
 
-    def __init__(self):
+    def __init__(self, use_tray=True):
         self.running = False
+        self.paused = False  # Pause state for tray menu
         self.monitor_thread = None
         self.approval_count = 0
         self.current_hwnd = None
+
+        # Tray icon support
+        self.use_tray = use_tray and TRAY_AVAILABLE
+        self.tray_icon = None
+        self.tray_thread = None
 
         # Notification queue - collect notifications during scan, show during rest period
         self.pending_notifications = []
@@ -681,6 +697,9 @@ class OCRAutoApprover:
             self.approval_count += 1
             self.approved_windows[hwnd] = time.time()  # Mark this window as approved with timestamp
 
+            # Update tray icon title
+            self.update_tray_title()
+
             timestamp = time.strftime('%H:%M:%S')
             print(f"[SUCCESS] Approval completed at {timestamp}")
             print(f"[INFO] Total approvals so far: {self.approval_count}")
@@ -785,12 +804,19 @@ class OCRAutoApprover:
 
         while self.running:
             try:
+                # Check if paused (via tray menu)
+                if self.paused:
+                    time.sleep(1)
+                    continue
+
                 # Active OCR monitoring - scans all visible windows
                 # Show periodic status update (every 30 seconds)
                 current_time = time.time()
                 if current_time - last_status_time >= 30:
                     print(f"[STATUS] Active monitoring | Approvals: {self.approval_count} | Checks: {active_check_count}")
                     last_status_time = current_time
+                    # Update tray tooltip
+                    self.update_tray_title()
 
                 # Get all target windows
                 target_windows = self.find_target_windows(verbose=False)
@@ -915,7 +941,113 @@ class OCRAutoApprover:
         self.running = False
         if self.monitor_thread:
             self.monitor_thread.join(timeout=3)
+        # Stop tray icon
+        if self.tray_icon:
+            try:
+                self.tray_icon.stop()
+            except:
+                pass
         print("[INFO] Monitoring stopped")
+
+    # ===== TRAY ICON METHODS =====
+
+    def create_tray_icon(self):
+        """Create system tray icon"""
+        if not TRAY_AVAILABLE:
+            print("[WARNING] pystray not available, skipping tray icon")
+            return None
+
+        try:
+            # Load icon image
+            icon_path = os.path.join(os.path.dirname(__file__), "approval_icon_64.png")
+            if not os.path.exists(icon_path):
+                icon_path = os.path.join(os.path.dirname(__file__), "approval_icon.png")
+
+            if os.path.exists(icon_path):
+                icon_image = Image.open(icon_path)
+                # Resize if needed
+                if icon_image.size[0] > 64:
+                    icon_image = icon_image.resize((64, 64), Image.LANCZOS)
+            else:
+                # Create a simple green circle icon if no image found
+                icon_image = self._create_default_icon()
+
+            # Create menu
+            menu = pystray.Menu(
+                item('Status: Running', None, enabled=False),
+                item(lambda text: f'Approvals: {self.approval_count}', None, enabled=False),
+                pystray.Menu.SEPARATOR,
+                item('Pause', self._on_pause, checked=lambda item: self.paused),
+                item('Resume', self._on_resume, visible=lambda item: self.paused),
+                pystray.Menu.SEPARATOR,
+                item('Exit', self._on_exit)
+            )
+
+            # Create tray icon
+            self.tray_icon = pystray.Icon(
+                "Claude Auto Approver",
+                icon_image,
+                "Claude Auto Approver",
+                menu
+            )
+
+            print("[OK] System tray icon created")
+            return self.tray_icon
+
+        except Exception as e:
+            print(f"[ERROR] Failed to create tray icon: {e}")
+            return None
+
+    def _create_default_icon(self):
+        """Create a default icon (green circle) if no icon file exists"""
+        # Create a 64x64 image with a green circle
+        img = Image.new('RGBA', (64, 64), (0, 0, 0, 0))
+        from PIL import ImageDraw
+        draw = ImageDraw.Draw(img)
+        # Green filled circle
+        draw.ellipse([4, 4, 60, 60], fill=(76, 175, 80, 255), outline=(56, 142, 60, 255), width=2)
+        # White checkmark
+        draw.line([(20, 32), (28, 42), (44, 22)], fill=(255, 255, 255, 255), width=4)
+        return img
+
+    def _on_pause(self, icon, item):
+        """Pause monitoring"""
+        self.paused = True
+        print("[INFO] Monitoring PAUSED via tray menu")
+        # Update icon tooltip
+        if self.tray_icon:
+            self.tray_icon.title = "Claude Auto Approver (PAUSED)"
+        show_notification_popup("Auto Approver", "Monitoring paused")
+
+    def _on_resume(self, icon, item):
+        """Resume monitoring"""
+        self.paused = False
+        print("[INFO] Monitoring RESUMED via tray menu")
+        # Update icon tooltip
+        if self.tray_icon:
+            self.tray_icon.title = "Claude Auto Approver"
+        show_notification_popup("Auto Approver", "Monitoring resumed")
+
+    def _on_exit(self, icon, item):
+        """Exit application"""
+        print("[INFO] Exit requested via tray menu")
+        self.running = False
+        if self.tray_icon:
+            self.tray_icon.stop()
+
+    def update_tray_title(self):
+        """Update tray icon title with current status"""
+        if self.tray_icon:
+            status = "PAUSED" if self.paused else "Running"
+            self.tray_icon.title = f"Claude Auto Approver ({status}) - {self.approval_count} approvals"
+
+    def run_tray_icon(self):
+        """Run tray icon in a separate thread"""
+        if self.tray_icon:
+            try:
+                self.tray_icon.run()
+            except Exception as e:
+                print(f"[ERROR] Tray icon error: {e}")
 
 
 def main():
@@ -928,16 +1060,26 @@ def main():
     print("  - Detects approval prompts from Claude Code")
     print("  - Auto-inputs '1' (NO Enter key)")
     print("  - Shows notifications")
+    print("  - System tray icon for status and control")
     print()
     print("Requirements:")
     print("  - Tesseract OCR must be installed")
     print("  - Windows must be visible (not minimized)")
     print()
-    print("Exit: Ctrl+C")
+    print("Controls:")
+    print("  - Right-click tray icon for menu")
+    print("  - Pause/Resume monitoring from tray")
+    print("  - Exit: Ctrl+C or tray menu")
     print("=" * 70)
     print()
 
-    approver = OCRAutoApprover()
+    # Check if tray is available
+    if TRAY_AVAILABLE:
+        print("[OK] System tray support available")
+    else:
+        print("[WARNING] System tray not available (install pystray: pip install pystray)")
+
+    approver = OCRAutoApprover(use_tray=True)
 
     try:
         # Check target windows
@@ -961,6 +1103,14 @@ def main():
                     print(f"  {i}. [{hwnd}] {safe_title[:50]}")
         else:
             print("\n[WARNING] No windows found to monitor")
+
+        # Create and start tray icon in background thread
+        if approver.use_tray:
+            approver.create_tray_icon()
+            if approver.tray_icon:
+                approver.tray_thread = threading.Thread(target=approver.run_tray_icon, daemon=True)
+                approver.tray_thread.start()
+                print("[OK] System tray icon started - right-click for menu")
 
         approver.start()
 
