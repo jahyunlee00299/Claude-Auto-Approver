@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Simple test - just print "APPROVAL" when '2' is pressed
+Simple test - just print "APPROVAL" when '1' is pressed
 """
 import win32gui
 import win32api
@@ -28,7 +28,7 @@ if not window:
     print("No Question window found!")
 else:
     print(f"Found: {window['title']}")
-    print("Activating window and sending '2'...")
+    print("Activating window and sending '1'...")
 
     # Activate window
     try:
@@ -42,12 +42,12 @@ else:
     print("\n" + "="*50)
     print("🔔 APPROVAL DETECTED 🔔")
     print(f"Window: {window['title']}")
-    print(f"Action: Sending '2' key")
+    print(f"Action: Sending '1' key")
     print("="*50 + "\n")
 
-    # Send '2' key
-    win32api.keybd_event(ord('2'), 0, 0, 0)
+    # Send '1' key
+    win32api.keybd_event(ord('1'), 0, 0, 0)
     time.sleep(0.05)
-    win32api.keybd_event(ord('2'), 0, win32con.KEYEVENTF_KEYUP, 0)
+    win32api.keybd_event(ord('1'), 0, win32con.KEYEVENTF_KEYUP, 0)
 
     print("✅ Done!")
