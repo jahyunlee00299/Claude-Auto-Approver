@@ -6,6 +6,7 @@ With System Tray Icon Support
 import sys
 import time
 import threading
+import re
 import win32gui
 import win32ui
 import win32con
@@ -523,7 +524,6 @@ class OCRAutoApprover:
             # Match: "1.", "1)", or bullet + "1."
             if '1.' in line_stripped or '1)' in line_stripped:
                 # Make sure it's not part of a larger number like "11." or "21."
-                import re
                 if re.search(r'(?:^|[^\d])1[.)]', line_stripped):
                     has_option_1 = True
 
@@ -720,7 +720,27 @@ class OCRAutoApprover:
             # Determine window type
             window_type = "Unknown"
             title_lower = window_title.lower()
-            if 'powershell' in title_lower:
+
+            # Anaconda Prompt detection (check first - more specific)
+            # Patterns: "Anaconda Prompt", "Anaconda PowerShell Prompt",
+            #           "(base) C:\...", "(myenv) C:\...", "Anaconda3"
+            if 'anaconda' in title_lower:
+                if 'powershell' in title_lower:
+                    window_type = "Anaconda PowerShell"
+                else:
+                    window_type = "Anaconda Prompt"
+            # Conda environment pattern: "(base)", "(myenv)", etc.
+            elif title_lower.startswith('(') and ')' in title_lower:
+                # Extract environment name from "(envname) ..."
+                conda_env_match = re.match(r'\(([^)]+)\)', title_lower)
+                if conda_env_match:
+                    env_name = conda_env_match.group(1)
+                    # Check if it looks like a conda environment (not a PID or other)
+                    if env_name and not env_name.isdigit() and len(env_name) < 30:
+                        window_type = f"Conda ({env_name})"
+            elif 'conda' in title_lower:
+                window_type = "Conda"
+            elif 'powershell' in title_lower:
                 window_type = "PowerShell"
             elif 'cmd' in title_lower or 'command' in title_lower:
                 window_type = "CMD"
