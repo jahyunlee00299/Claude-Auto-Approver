@@ -567,78 +567,75 @@ class OCRAutoApprover:
         return False
 
     def determine_response_key(self, text):
-        """Determine which key to press based on the options in the text
+        """Smart option selection based on actual option text content
 
         Logic:
-        - Only checks first word after option number (e.g., "1. Yes" -> "yes")
-        - If 3 options (1, 2, 3): Select option 2 (usually "yes, and don't ask again")
-        - If 2 options (1, 2): Select option 1 (safer, one-time approval)
+        - Parse actual text of each option (1., 2., 3.)
+        - Score each option based on keywords:
+          - "yes" = +10 points
+          - "don't ask again" = +5 bonus (permanent approval)
+          - "approve/allow" = +10 points
+          - "no/type/tell claude" = -100 points (never select)
+        - Select highest scoring option
 
         Returns:
-            str: '1' or '2' depending on the options
+            str: '1', '2', or '3' based on best match
         """
         if not text:
-            return '1'  # Default to option 1 (safer choice)
+            return '1'
 
-        text_lower = text.lower()
-        lines = text.split('\n')
+        # Parse options: {option_number: full_option_text}
+        options = {}
 
-        # Extract option keywords (only first word after number)
-        option_1_keyword = ''
-        option_2_keyword = ''
-        option_3_keyword = ''
-        has_option_3 = False
-
-        for line in lines:
+        for line in text.split('\n'):
             line_stripped = line.strip().lower()
 
-            # Extract first word after option number (handles "❯ 1. Yes" format)
-            if '1.' in line_stripped or '1)' in line_stripped:
-                # Find position of "1." or "1)"
-                if '1.' in line_stripped:
-                    pos = line_stripped.index('1.') + 2
-                else:
-                    pos = line_stripped.index('1)') + 2
+            # Match "1. text", "1) text", "› 1. text" etc.
+            for opt_num in ['1', '2', '3']:
+                pattern = rf'(?:^|[^\d]){opt_num}[.)]\s*(.+)'
+                match = re.search(pattern, line_stripped)
+                if match and opt_num not in options:
+                    options[opt_num] = match.group(1).strip()
 
-                # Get text after "1." or "1)"
-                after_number = line_stripped[pos:].strip()
-                # Extract first word (up to comma, space, or end)
-                first_word = after_number.split(',')[0].split()[0] if after_number else ''
-                option_1_keyword = first_word
+        print(f"[DEBUG] Parsed options: {options}")
 
-            elif '2.' in line_stripped or '2)' in line_stripped:
-                if '2.' in line_stripped:
-                    pos = line_stripped.index('2.') + 2
-                else:
-                    pos = line_stripped.index('2)') + 2
+        # Score each option
+        best_option = '1'  # Default fallback
+        best_score = -999
 
-                after_number = line_stripped[pos:].strip()
-                first_word = after_number.split(',')[0].split()[0] if after_number else ''
-                option_2_keyword = first_word
+        for opt_num, opt_text in options.items():
+            score = 0
 
-            elif '3.' in line_stripped or '3)' in line_stripped:
-                if '3.' in line_stripped:
-                    pos = line_stripped.index('3.') + 2
-                else:
-                    pos = line_stripped.index('3)') + 2
+            # Positive signals (want to select)
+            if 'yes' in opt_text:
+                score += 10
+            if "don't ask" in opt_text or "dont ask" in opt_text or "don't ask" in opt_text:
+                score += 5  # Permanent approval bonus
+            if 'approve' in opt_text:
+                score += 10
+            if 'allow' in opt_text:
+                score += 8
+            if 'proceed' in opt_text:
+                score += 8
 
-                after_number = line_stripped[pos:].strip()
-                first_word = after_number.split(',')[0].split()[0] if after_number else ''
-                option_3_keyword = first_word
-                has_option_3 = True
+            # Negative signals (never select)
+            if 'type' in opt_text and 'here' in opt_text:
+                score -= 100  # "Type here to tell Claude..."
+            if 'tell claude' in opt_text:
+                score -= 100
+            if 'differently' in opt_text:
+                score -= 100
+            if opt_text.startswith('no') and 'yes' not in opt_text:
+                score -= 100  # Starts with "No"
 
-        print(f"[DEBUG] Option 1 keyword: '{option_1_keyword}' (full line trimmed)")
-        print(f"[DEBUG] Option 2 keyword: '{option_2_keyword}' (full line trimmed)")
-        if has_option_3:
-            print(f"[DEBUG] Option 3 keyword: '{option_3_keyword}' (full line trimmed)")
-        print(f"[DEBUG] Has 3 options: {has_option_3}")
+            print(f"[DEBUG] Option {opt_num}: '{opt_text[:50]}' -> score={score}")
 
-        # MAIN LOGIC: Always select option 1 (Yes) for safety
-        # Option 1 is always "Yes" in Claude Code dialogs
-        # Option 2 is either "Yes, don't ask again" (3-option) or "Type here..." (2-option)
-        # Selecting '1' is the safest choice for all cases
-        print(f"[DEBUG] Selecting option 1 (Yes) - safest choice")
-        return '1'
+            if score > best_score:
+                best_score = score
+                best_option = opt_num
+
+        print(f"[DEBUG] Selected option {best_option} (score={best_score})")
+        return best_option
 
     def should_approve(self, hwnd):
         """Check if should auto-approve (with time-based cooldown)"""
