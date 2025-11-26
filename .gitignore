@@ -35,6 +35,9 @@ env/
 *.log
 logs/
 
+# Runtime files
+*.pid
+
 # Config
 config.yaml
 config.yml
