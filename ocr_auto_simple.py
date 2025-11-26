@@ -91,7 +91,7 @@ def send_approval(hwnd, title):
     global approval_count
     try:
         safe_title = title.encode('ascii', 'ignore').decode('ascii')[:40]
-        log(f"Sending '2' to: {safe_title}")
+        log(f"Sending '1' to: {safe_title}")
 
         win32gui.SetForegroundWindow(hwnd)
         time.sleep(0.3)
@@ -266,12 +266,12 @@ def send_approval(hwnd, title):
 
                         initial_text = new_text
 
-                    # Still not found, fallback
+                    # Still not found, fallback - send '1' (Yes) as safest option
                     if not found:
-                        log(f"Exhausted both directions, sending '2' as fallback")
-                        win32api.keybd_event(ord('2'), 0, 0, 0)
+                        log(f"Exhausted both directions, sending '1' as fallback")
+                        win32api.keybd_event(ord('1'), 0, 0, 0)
                         time.sleep(0.05)
-                        win32api.keybd_event(ord('2'), 0, win32con.KEYEVENTF_KEYUP, 0)
+                        win32api.keybd_event(ord('1'), 0, win32con.KEYEVENTF_KEYUP, 0)
 
         approval_count += 1
         last_approval[hwnd] = time.time()
