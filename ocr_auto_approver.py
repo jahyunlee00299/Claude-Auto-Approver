@@ -634,6 +634,11 @@ class OCRAutoApprover:
                 best_score = score
                 best_option = opt_num
 
+        # Safety: Never return '3' - only '1' or '2' are valid approval options
+        if best_option == '3':
+            print(f"[DEBUG] Option 3 selected but overriding to '1' for safety")
+            best_option = '1'
+
         print(f"[DEBUG] Selected option {best_option} (score={best_score})")
         return best_option
 
