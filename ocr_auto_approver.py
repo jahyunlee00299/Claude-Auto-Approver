@@ -633,15 +633,12 @@ class OCRAutoApprover:
             print(f"[DEBUG] Option 3 keyword: '{option_3_keyword}' (full line trimmed)")
         print(f"[DEBUG] Has 3 options: {has_option_3}")
 
-        # MAIN LOGIC: Check if there are 3 options
-        if has_option_3:
-            # 3 options detected -> Select option 2 (usually "yes, and don't ask again")
-            print(f"[DEBUG] 3 options detected - selecting option 2")
-            return '2'
-        else:
-            # 2 options detected -> Select option 1 (safer, one-time approval)
-            print(f"[DEBUG] 2 options detected - selecting option 1")
-            return '1'
+        # MAIN LOGIC: Always select option 1 (Yes) for safety
+        # Option 1 is always "Yes" in Claude Code dialogs
+        # Option 2 is either "Yes, don't ask again" (3-option) or "Type here..." (2-option)
+        # Selecting '1' is the safest choice for all cases
+        print(f"[DEBUG] Selecting option 1 (Yes) - safest choice")
+        return '1'
 
     def should_approve(self, hwnd):
         """Check if should auto-approve (with time-based cooldown)"""
