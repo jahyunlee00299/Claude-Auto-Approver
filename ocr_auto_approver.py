@@ -198,7 +198,12 @@ class OCRAutoApprover:
             'select one of the following',
             'choose one of the following',
             'no, and tell claude',
-            'tell claude what to do differently'
+            'tell claude what to do differently',
+            'quick safety check',
+            'trust this folder',
+            'i trust this folder',
+            'is this a project you',
+            'project you created or one you trust',
         ]
 
         # Exclude keywords (removed 'editor' to allow Claude Code windows)
@@ -617,6 +622,8 @@ class OCRAutoApprover:
                 score += 8
             if 'proceed' in opt_text:
                 score += 8
+            if 'trust' in opt_text:
+                score += 10  # "Yes, I trust this folder"
 
             # Negative signals (never select)
             if 'type' in opt_text and 'here' in opt_text:
@@ -627,6 +634,8 @@ class OCRAutoApprover:
                 score -= 100
             if opt_text.startswith('no') and 'yes' not in opt_text:
                 score -= 100  # Starts with "No"
+            if 'exit' in opt_text:
+                score -= 100  # "No, exit" - never select exit option
 
             print(f"[DEBUG] Option {opt_num}: '{opt_text[:50]}' -> score={score}")
 
