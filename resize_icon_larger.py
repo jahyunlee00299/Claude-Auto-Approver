@@ -3,12 +3,16 @@
 """
 from PIL import Image
 import os
+import sys
 
 def resize_icon_larger():
     """아이콘을 더 큰 크기로 리사이즈"""
 
-    # 원본 이미지 경로
-    source_path = r"C:\Users\<user>\OneDrive - <institution>\Desktop\9dc14126ee3e2d16b00d0a503b592cbb8b566dca82634c93f811198148a26065.png"
+    # 원본 이미지 경로: CLI 인자 > 환경변수 > 기본값(로컬 icon.png) 순으로 결정
+    source_path = (
+        sys.argv[1] if len(sys.argv) > 1
+        else os.environ.get("ICON_SOURCE_PATH", os.path.join(os.path.dirname(__file__), "icon.png"))
+    )
 
     # 대상 경로
     target_path = os.path.join(os.path.dirname(__file__), "approval_icon.png")
