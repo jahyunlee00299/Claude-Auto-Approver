@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-전체 통합 테스트 - OCR Auto Approver + 승인 대화상자 + 알림
+Full integration test - OCR Auto Approver + approval dialog + notification
 """
 import time
 import subprocess

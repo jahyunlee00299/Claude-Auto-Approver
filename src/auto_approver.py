@@ -30,19 +30,19 @@ class AutoApprover:
         self.delay = config.get('delay_seconds', 1)
         self.safe_mode = config.get('safe_mode', True)
 
-        # 승인 대화상자 감지 패턴 - AskUserQuestion과 같은 실제 승인 창만 감지
+        # Approval dialog detection patterns - only detects real approval windows like AskUserQuestion
         self.window_patterns = config.get('window_patterns', [
             'Question', '질문', 'Approval', '승인', 'Permission', '허용',
             'Allow', 'Authorize', 'Grant', 'Accept'
         ])
 
-        # 제외할 창 패턴 (일반 에디터나 앱 창은 제외)
+        # Window patterns to exclude (regular editor or app windows)
         self.exclude_patterns = config.get('exclude_patterns', [
             'Visual Studio', 'PyCharm', 'Code', 'Notepad', 'Chrome',
             'Firefox', 'Explorer', 'README', 'md', 'txt', 'py'
         ])
 
-        # 버튼 텍스트 패턴
+        # Button text patterns
         self.button_patterns = config.get('button_patterns', [
             'OK', '확인', 'Yes', '예', 'Allow', '허용',
             'Continue', '계속', 'Approve', '승인', 'Accept', '동의'
@@ -50,7 +50,7 @@ class AutoApprover:
 
         self.approval_count = 0
 
-        # PyAutoGUI 설정
+        # PyAutoGUI settings
         pyautogui.FAILSAFE = True
         pyautogui.PAUSE = 0.1
 
@@ -106,7 +106,7 @@ class AutoApprover:
         Returns:
             True if prompt found, False otherwise
         """
-        # 승인 대화상자 찾기
+        # Find the approval dialog
         window_info = self._find_approval_window()
         if window_info:
             self.current_window = window_info
@@ -114,17 +114,17 @@ class AutoApprover:
         return False
 
     def _find_approval_window(self) -> Optional[Dict]:
-        """승인 대화상자 찾기"""
+        """Find an approval dialog"""
         def enum_windows_callback(hwnd, windows):
             if win32gui.IsWindowVisible(hwnd):
                 window_text = win32gui.GetWindowText(hwnd)
                 if window_text:
-                    # 제외 패턴 체크
+                    # Check exclude patterns
                     for exclude in self.exclude_patterns:
                         if exclude.lower() in window_text.lower():
                             return True
 
-                    # 승인 창 패턴 체크
+                    # Check approval window patterns
                     for pattern in self.window_patterns:
                         if pattern.lower() in window_text.lower():
                             try:
@@ -163,20 +163,20 @@ class AutoApprover:
             return
 
         try:
-            # 창을 전면으로 가져오기
+            # Bring the window to the foreground
             win32gui.SetForegroundWindow(hwnd)
             time.sleep(self.delay)
 
-            # fail-safe 에러를 방지하기 위해 try-except로 감싸기
+            # Wrap in try-except to guard against a fail-safe error
             try:
-                # Enter 키로 기본 버튼 클릭 시도
+                # Try pressing Enter to click the default button
                 pyautogui.press('enter')
                 self.approval_count += 1
                 print(f"   ✅ 자동 승인 완료 (Enter 키 사용)")
                 self.logger.info(f"Auto-approved window: '{title}'")
 
             except pyautogui.FailSafeException:
-                # fail-safe가 트리거된 경우, win32api를 사용하여 Enter 키 전송
+                # If the fail-safe triggers, send Enter using win32api instead
                 import win32api
                 import win32con
                 win32api.keybd_event(win32con.VK_RETURN, 0, 0, 0)

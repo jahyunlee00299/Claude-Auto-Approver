@@ -1,5 +1,5 @@
 """
-Python에서 Windows Toast 알림 테스트
+Test a Windows Toast notification from Python
 """
 import subprocess
 import time
@@ -14,7 +14,7 @@ def test_notification():
     title_escaped = title.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
     message_escaped = message.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
 
-    # PowerShell 스크립트
+    # PowerShell script
     ps_script = f'''
 [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
 [Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime] | Out-Null
@@ -39,7 +39,7 @@ $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
 '''
 
     try:
-        # PowerShell 실행
+        # Run PowerShell
         result = subprocess.run(
             ['powershell', '-WindowStyle', 'Hidden', '-Command', ps_script],
             capture_output=True,

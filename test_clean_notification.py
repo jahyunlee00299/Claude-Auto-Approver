@@ -1,16 +1,16 @@
 """
-개선된 알림 최종 테스트
+Final test of the improved notification
 """
 import sys
 import os
 
-# 현재 디렉토리를 Python 경로에 추가
+# Add the current directory to the Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from ocr_auto_approver import show_notification_popup
 
 def test_clean_notification():
-    """깔끔한 알림 테스트"""
+    """Test a clean notification"""
     print("=" * 60)
     print("개선된 알림 시스템 최종 테스트")
     print("=" * 60)
@@ -18,7 +18,7 @@ def test_clean_notification():
     print("\n알림 예시:")
     print("-" * 40)
 
-    # 테스트
+    # Test
     show_notification_popup(
         title="자동 승인 완료",
         message="'Y' 키가 전송되었습니다",

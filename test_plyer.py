@@ -1,5 +1,5 @@
 """
-PowerShell로 Windows 알림 테스트
+Windows notification test via PowerShell
 """
 import subprocess
 import time

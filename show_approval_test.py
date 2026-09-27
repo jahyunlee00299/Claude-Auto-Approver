@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-간단한 승인 요청 대화상자 - OCR 테스트용
+Simple approval request dialog - for OCR testing
 """
 import tkinter as tk
 import time

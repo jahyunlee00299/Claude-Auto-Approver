@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-타겟 윈도우 감지 테스트 - ocr_auto_approver의 로직을 테스트
+Target window detection test - tests the logic from ocr_auto_approver
 """
 import sys
 import io

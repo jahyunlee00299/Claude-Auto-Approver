@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-간단한 승인 알림 프로그램 - 현재 콘솔만 모니터링
+Simple approval notifier program - monitors only the current console
 """
 import sys
 import io
@@ -10,7 +10,7 @@ import win32console
 import winsound
 from winotify import Notification, audio
 
-# UTF-8 설정
+# UTF-8 setup
 if sys.platform == 'win32':
     try:
         sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
@@ -23,9 +23,9 @@ class SimpleNotifier:
         self.running = False
         self.last_pattern = ""
         self.last_notification_time = 0
-        self.notification_interval = 15  # 15초에 한 번만 알림
+        self.notification_interval = 15  # Notify at most once per 15 seconds
 
-        # 승인 패턴
+        # Approval patterns
         self.patterns = [
             'Do you want to proceed?',
             '1. Yes',
@@ -35,13 +35,13 @@ class SimpleNotifier:
         print("✅ Simple Notifier 초기화")
 
     def read_console(self):
-        """현재 콘솔 화면 읽기"""
+        """Read the current console screen"""
         try:
             handle = win32console.GetStdHandle(win32console.STD_OUTPUT_HANDLE)
             csbi = handle.GetConsoleScreenBufferInfo()
             cursor_pos = csbi['CursorPosition']
 
-            # 최근 20줄
+            # Last 20 lines
             lines_to_read = min(20, cursor_pos.Y + 1)
             start_y = max(0, cursor_pos.Y - lines_to_read + 1)
 
@@ -60,7 +60,7 @@ class SimpleNotifier:
             return ""
 
     def check_pattern(self, text):
-        """승인 패턴 확인"""
+        """Check for an approval pattern"""
         if not text:
             return False
         text_lower = text.lower()
@@ -70,10 +70,10 @@ class SimpleNotifier:
         return False
 
     def should_notify(self, text):
-        """알림을 보내야 하는지 확인"""
+        """Check whether a notification should be sent"""
         current_time = time.time()
 
-        # 같은 패턴은 15초에 한 번만
+        # Only once per 15 seconds for the same pattern
         if text == self.last_pattern:
             if current_time - self.last_notification_time < self.notification_interval:
                 return False
@@ -81,7 +81,7 @@ class SimpleNotifier:
         return True
 
     def notify(self, text):
-        """알림 표시"""
+        """Show a notification"""
         if not self.should_notify(text):
             return
 
@@ -97,7 +97,7 @@ class SimpleNotifier:
 
             winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
 
-            # 기록
+            # Record
             self.last_pattern = text
             self.last_notification_time = time.time()
 
@@ -108,7 +108,7 @@ class SimpleNotifier:
             print(f"⚠️ 알림 실패: {e}")
 
     def run(self):
-        """메인 루프"""
+        """Main loop"""
         print("\n" + "="*60)
         print("🔔 Simple Claude Approval Notifier")
         print("="*60)
@@ -120,10 +120,10 @@ class SimpleNotifier:
 
         try:
             while self.running:
-                # 콘솔 읽기
+                # Read console
                 text = self.read_console()
 
-                # 패턴 확인
+                # Check pattern
                 if text and self.check_pattern(text):
                     self.notify(text)
 

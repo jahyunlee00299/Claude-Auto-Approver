@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-알림 기능 통합 테스트
+Notification feature integration test
 """
 import time
 from ocr_auto_approver import show_notification_popup

@@ -1,20 +1,20 @@
 """
-향상된 알림 시스템 테스트
+Enhanced notification system test
 """
 import sys
 import os
 
-# 현재 디렉토리를 Python 경로에 추가
+# Add the current directory to the Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from ocr_auto_approver import show_notification_popup
 
 def test_enhanced_notification():
-    """향상된 알림 시스템 테스트"""
+    """Test the enhanced notification system"""
     print("향상된 알림 시스템 테스트를 시작합니다...")
     print("-" * 50)
 
-    # 테스트 1: 윈도우 정보가 있는 경우
+    # Test 1: with window info
     print("\n[테스트 1] 윈도우 정보 포함 알림")
     show_notification_popup(
         title="자동 승인 완료",

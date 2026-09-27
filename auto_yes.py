@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Auto Yes - 자동으로 승인 대화상자를 감지하여 다른 Git Bash 창에 '1' + Enter 입력
+Auto Yes - automatically detects the approval dialog and sends '1' + Enter to another Git Bash window
 """
 
 import sys
@@ -11,7 +11,7 @@ import win32con
 import win32api
 import win32console
 
-# UTF-8 설정
+# UTF-8 setup
 import io
 if sys.platform == 'win32':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
@@ -23,30 +23,30 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 
 class AutoYesApprover:
-    """승인 대화상자를 자동으로 감지하여 다른 창에 '1' 입력"""
+    """Automatically detects the approval dialog and sends '1' to another window"""
 
     def __init__(self):
         self.running = False
         self.monitor_thread = None
         self.approval_count = 0
 
-        # 감지할 창 패턴 (승인 대화상자)
+        # Window patterns to detect (approval dialog)
         self.approval_patterns = [
             'Question', '질문', 'Confirm', '확인',
             'Approval', '승인', 'Permission', 'Allow'
         ]
 
-        # 대상 Git Bash 창 패턴
+        # Target Git Bash window patterns
         self.target_patterns = [
             'MINGW', 'bash', 'Claude', 'Terminal'
         ]
 
-        # 중복 방지
+        # Duplicate-prevention
         self.last_handled_window = None
         self.last_handled_time = 0
 
     def find_approval_window(self):
-        """승인 대화상자 찾기"""
+        """Find the approval dialog"""
         def enum_callback(hwnd, windows):
             if win32gui.IsWindowVisible(hwnd):
                 title = win32gui.GetWindowText(hwnd)
@@ -63,7 +63,7 @@ class AutoYesApprover:
         return windows[0] if windows else None
 
     def find_target_bash_window(self):
-        """대상 Git Bash 창 찾기"""
+        """Find the target Git Bash window"""
         def enum_callback(hwnd, windows):
             if win32gui.IsWindowVisible(hwnd):
                 title = win32gui.GetWindowText(hwnd)
@@ -77,26 +77,26 @@ class AutoYesApprover:
         except:
             pass
 
-        # 여러 창이 있으면 첫 번째 반환
+        # If multiple windows exist, return the first one
         return windows[0] if windows else None
 
     def send_approval(self, target_window):
-        """대상 창에 '1'만 전송 (Enter 없음)"""
+        """Send only '1' to the target window (no Enter)"""
         try:
             hwnd = target_window['hwnd']
             title = target_window['title']
 
             print(f"\n📤 '{title}'로 전환하여 '1' 입력 중...")
 
-            # 창 활성화
+            # Activate the window
             try:
                 win32gui.SetForegroundWindow(hwnd)
             except:
-                pass  # 에러 무시하고 계속
+                pass  # Ignore the error and continue
 
             time.sleep(0.2)
 
-            # '1' 입력만 (Enter 없음!)
+            # Send only '1' (no Enter!)
             win32api.keybd_event(ord('1'), 0, 0, 0)
             time.sleep(0.05)
             win32api.keybd_event(ord('1'), 0, win32con.KEYEVENTF_KEYUP, 0)
@@ -110,16 +110,16 @@ class AutoYesApprover:
             return False
 
     def monitor_loop(self):
-        """메인 모니터링 루프"""
+        """Main monitoring loop"""
         print("\n🔍 모니터링 시작...")
 
         while self.running:
             try:
-                # 승인 대화상자 찾기
+                # Find the approval dialog
                 approval_window = self.find_approval_window()
 
                 if approval_window:
-                    # 중복 방지: 같은 창은 3초에 한 번만 처리
+                    # Duplicate-prevention: handle the same window at most once every 3s
                     hwnd = approval_window['hwnd']
                     if hwnd == self.last_handled_window:
                         if time.time() - self.last_handled_time < 3:
@@ -128,11 +128,11 @@ class AutoYesApprover:
 
                     print(f"\n📋 승인 대화상자 감지: '{approval_window['title']}'")
 
-                    # 대상 Git Bash 창 찾기
+                    # Find the target Git Bash window
                     target_window = self.find_target_bash_window()
 
                     if target_window:
-                        # 승인 전송
+                        # Send the approval
                         if self.send_approval(target_window):
                             self.last_handled_window = hwnd
                             self.last_handled_time = time.time()
@@ -148,7 +148,7 @@ class AutoYesApprover:
         print("\n🛑 모니터링 종료")
 
     def start(self):
-        """모니터링 시작"""
+        """Start monitoring"""
         if self.running:
             return
 
@@ -160,7 +160,7 @@ class AutoYesApprover:
         print("✅ Auto Yes Approver 시작됨")
 
     def stop(self):
-        """모니터링 중지"""
+        """Stop monitoring"""
         self.running = False
         if self.monitor_thread:
             self.monitor_thread.join(timeout=2)
@@ -190,7 +190,7 @@ def main():
     try:
         approver.start()
 
-        # 메인 스레드 대기
+        # Wait on the main thread
         while approver.running:
             time.sleep(1)
 

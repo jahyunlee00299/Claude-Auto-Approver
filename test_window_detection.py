@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-현재 열린 창 목록 확인
+Check the list of currently open windows
 """
 import sys
 import io
@@ -10,7 +10,7 @@ if sys.platform == 'win32':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 def list_windows():
-    """모든 창 목록 출력"""
+    """Print the list of all windows"""
     def callback(hwnd, windows):
         if win32gui.IsWindowVisible(hwnd):
             title = win32gui.GetWindowText(hwnd)

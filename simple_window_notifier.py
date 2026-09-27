@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Simple Window Notifier - Tesseract 없이 작동
-활성 창이 특정 프로젝트/터미널일 때 알림 표시
+Simple Window Notifier - works without Tesseract
+Shows a notification when the active window is a specific project/terminal
 """
 import time
 import win32gui
@@ -13,29 +13,29 @@ class SimpleWindowNotifier:
         self.running = False
         self.notification_count = 0
 
-        # 모니터링할 창 패턴 (프로젝트 이름 등)
+        # Window patterns to monitor (project names, etc.)
         self.watch_patterns = [
-            'catapro',  # PyCharm 프로젝트
-            'Claude',   # Claude 터미널
+            'catapro',  # PyCharm project
+            'Claude',   # Claude terminal
             'bash',     # Git Bash
-            'Terminal', # 터미널
+            'Terminal', # terminal
             'MINGW',    # MinGW
         ]
 
-        # 제외할 패턴
+        # Patterns to exclude
         self.exclude_patterns = [
             'readme', '.md', '.txt', '.py', 'editor',
             'chrome', 'firefox', 'browser'
         ]
 
-        # 중복 방지
+        # Duplicate prevention
         self.last_notification_per_window = {}
-        self.min_notification_interval = 20  # 20초에 한 번만 알림
+        self.min_notification_interval = 20  # notify at most once every 20 seconds
 
         print("[OK] Simple Window Notifier initialized")
 
     def get_foreground_window(self):
-        """활성 창 정보 가져오기"""
+        """Get info about the foreground window"""
         try:
             hwnd = win32gui.GetForegroundWindow()
             title = win32gui.GetWindowText(hwnd)
@@ -44,18 +44,18 @@ class SimpleWindowNotifier:
             return None, None
 
     def should_monitor(self, title):
-        """이 창을 모니터링해야 하는지 확인"""
+        """Check whether this window should be monitored"""
         if not title:
             return False
 
         title_lower = title.lower()
 
-        # 제외 패턴 확인
+        # Check exclude patterns
         for exclude in self.exclude_patterns:
             if exclude in title_lower:
                 return False
 
-        # 감시 패턴 확인
+        # Check watch patterns
         for pattern in self.watch_patterns:
             if pattern.lower() in title_lower:
                 return True
@@ -63,7 +63,7 @@ class SimpleWindowNotifier:
         return False
 
     def should_notify(self, hwnd):
-        """알림을 보내야 하는지 확인"""
+        """Check whether a notification should be sent"""
         current_time = time.time()
 
         if hwnd in self.last_notification_per_window:
@@ -74,15 +74,15 @@ class SimpleWindowNotifier:
         return True
 
     def show_notification(self, window_title):
-        """알림 표시"""
+        """Show a notification"""
         try:
-            # 창 제목 단순화
+            # Simplify the window title
             if len(window_title) > 50:
                 display_title = window_title[:47] + "..."
             else:
                 display_title = window_title
 
-            # Windows 알림
+            # Windows notification
             toast = Notification(
                 app_id="Claude Auto Approver",
                 title="Approval May Be Needed",
@@ -92,7 +92,7 @@ class SimpleWindowNotifier:
             toast.set_audio(audio.Default, loop=False)
             toast.show()
 
-            # 시스템 비프음
+            # System beep
             winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
 
             self.notification_count += 1
@@ -107,7 +107,7 @@ class SimpleWindowNotifier:
                 pass
 
     def run(self):
-        """메인 루프"""
+        """Main loop"""
         print("\n" + "="*60)
         print("Simple Window Notifier")
         print("="*60)
@@ -121,14 +121,14 @@ class SimpleWindowNotifier:
 
         try:
             while self.running:
-                # 활성 창 확인
+                # Check the active window
                 hwnd, title = self.get_foreground_window()
 
                 if hwnd and title and self.should_monitor(title):
-                    # 알림 필요 여부 확인
+                    # Check whether a notification is needed
                     if self.should_notify(hwnd):
                         try:
-                            # 안전하게 출력 (인코딩 오류 무시)
+                            # Print safely (ignore encoding errors)
                             safe_title = title.encode('ascii', 'ignore').decode('ascii')
                             print(f"\n[DETECTED] Monitored window: {safe_title}")
                         except:
@@ -136,7 +136,7 @@ class SimpleWindowNotifier:
                         self.show_notification(title)
                         self.last_notification_per_window[hwnd] = time.time()
 
-                time.sleep(2)  # 2초마다 확인
+                time.sleep(2)  # check every 2 seconds
 
         except KeyboardInterrupt:
             print("\n\n[INFO] Interrupted by user")

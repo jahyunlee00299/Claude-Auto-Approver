@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test Approval Dialog - Claude Code 스타일의 승인 대화상자 테스트
+Test Approval Dialog - tests an approval dialog styled after Claude Code
 """
 import tkinter as tk
 from tkinter import ttk

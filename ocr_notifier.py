@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 OCR-based Approval Notifier
-화면 OCR로 다른 터미널의 승인 요청을 감지하고 알림 표시
+Detects other terminals' approval requests via screen OCR and shows a notification
 """
 import sys
 import time
@@ -18,7 +18,7 @@ from winotify import Notification, audio
 
 # No UTF-8 configuration - use ASCII only for output to avoid encoding issues
 
-# Tesseract 경로 설정
+# Tesseract path
 pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 
@@ -61,12 +61,12 @@ class OCRNotifier:
         print("[OK] OCR Notifier initialized")
 
     def find_target_windows(self):
-        """모니터링 대상 창 찾기 - 모든 보이는 창 (현재 창 포함)"""
+        """Find windows to monitor - all visible windows (including the current one)"""
         def callback(hwnd, windows):
             if win32gui.IsWindowVisible(hwnd):
                 title = win32gui.GetWindowText(hwnd)
-                if title:  # 현재 창도 포함
-                    # 제외 키워드 확인
+                if title:  # Include the current window too
+                    # Check exclude keywords
                     title_lower = title.lower()
                     is_excluded = any(exc in title_lower for exc in self.exclude_keywords)
 
@@ -82,31 +82,31 @@ class OCRNotifier:
         return windows
 
     def capture_window(self, hwnd):
-        """창 스크린샷 캡처"""
+        """Capture a window screenshot"""
         try:
-            # 창 크기 가져오기
+            # Get window size
             left, top, right, bottom = win32gui.GetWindowRect(hwnd)
             width = right - left
             height = bottom - top
 
-            # 최소 크기 확인
+            # Check minimum size
             if width < 100 or height < 100:
                 return None
 
-            # 디바이스 컨텍스트
+            # Device context
             hwndDC = win32gui.GetWindowDC(hwnd)
             mfcDC = win32ui.CreateDCFromHandle(hwndDC)
             saveDC = mfcDC.CreateCompatibleDC()
 
-            # 비트맵 생성
+            # Create bitmap
             saveBitMap = win32ui.CreateBitmap()
             saveBitMap.CreateCompatibleBitmap(mfcDC, width, height)
             saveDC.SelectObject(saveBitMap)
 
-            # 화면 복사
+            # Copy screen
             saveDC.BitBlt((0, 0), (width, height), mfcDC, (0, 0), win32con.SRCCOPY)
 
-            # PIL Image로 변환
+            # Convert to PIL Image
             bmpinfo = saveBitMap.GetInfo()
             bmpstr = saveBitMap.GetBitmapBits(True)
             img = Image.frombuffer(
@@ -115,7 +115,7 @@ class OCRNotifier:
                 bmpstr, 'raw', 'BGRX', 0, 1
             )
 
-            # 정리
+            # Cleanup
             win32gui.DeleteObject(saveBitMap.GetHandle())
             saveDC.DeleteDC()
             mfcDC.DeleteDC()
@@ -127,14 +127,14 @@ class OCRNotifier:
             return None
 
     def extract_text_from_image(self, img):
-        """이미지에서 텍스트 추출 (OCR)"""
+        """Extract text from image (OCR)"""
         try:
-            # 이미지 하단 일부만 (최근 출력 부분)
+            # Only the bottom part of the image (most recent output)
             width, height = img.size
-            # 하단 30% 영역만 크롭
+            # Crop only the bottom 30% region
             bottom_region = img.crop((0, int(height * 0.7), width, height))
 
-            # OCR 수행
+            # Run OCR
             text = pytesseract.image_to_string(bottom_region, lang='eng')
             return text
 
@@ -142,7 +142,7 @@ class OCRNotifier:
             return ""
 
     def check_approval_pattern(self, text):
-        """텍스트에서 승인 패턴 확인"""
+        """Check text for an approval pattern"""
         if not text:
             return False
 
@@ -154,10 +154,10 @@ class OCRNotifier:
         return False
 
     def should_notify(self, hwnd):
-        """알림을 보내야 하는지 확인 (중복 방지)"""
+        """Check whether a notification should be sent (duplicate prevention)"""
         current_time = time.time()
 
-        # 같은 창에서 너무 자주 알림 방지
+        # Prevent notifying too often for the same window
         if hwnd in self.last_notification_per_window:
             last_time = self.last_notification_per_window[hwnd]
             if current_time - last_time < self.min_notification_interval:
@@ -166,15 +166,15 @@ class OCRNotifier:
         return True
 
     def show_notification(self, window_title):
-        """Windows 알림 표시"""
+        """Show a Windows notification"""
         try:
-            # 창 제목 단순화
+            # Simplify window title
             if len(window_title) > 50:
                 display_title = window_title[:47] + "..."
             else:
                 display_title = window_title
 
-            # Windows 알림 생성
+            # Create Windows notification
             toast = Notification(
                 app_id="Claude Auto Approver",
                 title="Approval Request",
@@ -182,13 +182,13 @@ class OCRNotifier:
                 duration="long"
             )
 
-            # 소리 설정
+            # Set sound
             toast.set_audio(audio.Default, loop=False)
 
-            # 알림 표시
+            # Show notification
             toast.show()
 
-            # 추가로 시스템 비프음
+            # Also play a system beep
             winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
 
             self.notification_count += 1
@@ -197,14 +197,14 @@ class OCRNotifier:
 
         except Exception as e:
             print(f"[WARNING] Notification failed: {e}")
-            # 알림 실패해도 소리는 재생
+            # Still play the sound even if the notification fails
             try:
                 winsound.MessageBeep(winsound.MB_ICONEXCLAMATION)
             except:
                 pass
 
     def monitor_loop(self):
-        """메인 모니터링 루프"""
+        """Main monitoring loop"""
         print("\n" + "="*60)
         print("OCR-based Approval Notifier")
         print("="*60)
@@ -214,31 +214,31 @@ class OCRNotifier:
 
         while self.running:
             try:
-                # 대상 창 찾기
+                # Find target windows
                 windows = self.find_target_windows()
 
-                # 각 창 확인 (최대 5개까지만)
+                # Check each window (up to 5 at a time)
                 for window in windows[:5]:
                     hwnd = window['hwnd']
                     title = window['title']
 
-                    # 화면 캡처
+                    # Capture screen
                     img = self.capture_window(hwnd)
                     if not img:
                         continue
 
-                    # OCR로 텍스트 추출
+                    # Extract text via OCR
                     text = self.extract_text_from_image(img)
 
-                    # 승인 패턴 확인
+                    # Check approval pattern
                     if self.check_approval_pattern(text):
-                        # 중복 체크
+                        # Duplicate check
                         if self.should_notify(hwnd):
                             print(f"\n[DETECTED] Approval request in: {title}")
                             self.show_notification(title)
                             self.last_notification_per_window[hwnd] = time.time()
 
-                time.sleep(3)  # OCR은 느리므로 3초 간격
+                time.sleep(3)  # 3 second interval since OCR is slow
 
             except Exception as e:
                 print(f"[ERROR] Monitoring error: {e}")
@@ -247,7 +247,7 @@ class OCRNotifier:
         print("\n[INFO] Monitoring stopped")
 
     def start(self):
-        """모니터링 시작"""
+        """Start monitoring"""
         if self.running:
             print("[WARNING] Already running")
             return
@@ -260,7 +260,7 @@ class OCRNotifier:
         print("[OK] OCR Notifier started")
 
     def stop(self):
-        """모니터링 중지"""
+        """Stop monitoring"""
         self.running = False
         if self.monitor_thread:
             self.monitor_thread.join(timeout=3)
@@ -289,7 +289,7 @@ def main():
     notifier = OCRNotifier()
 
     try:
-        # 대상 창 확인
+        # Check target windows
         windows = notifier.find_target_windows()
         if windows:
             print(f"\nFound {len(windows)} windows to monitor")
@@ -298,7 +298,7 @@ def main():
 
         notifier.start()
 
-        # 메인 스레드 대기
+        # Wait on main thread
         while notifier.running:
             time.sleep(1)
 

@@ -1,42 +1,42 @@
 """
-Tkinter 팝업 테스트 - 확실하게 보이는 알림
+Tkinter popup test - a notification that reliably shows
 """
 import tkinter as tk
 from tkinter import messagebox
 import time
 
 def show_popup(title, message):
-    """Tkinter 팝업 창 표시"""
+    """Show a Tkinter popup window"""
     root = tk.Tk()
-    root.withdraw()  # 메인 창 숨기기
-    root.attributes('-topmost', True)  # 항상 위에 표시
+    root.withdraw()  # Hide the main window
+    root.attributes('-topmost', True)  # Always show on top
 
-    # 메시지 박스 표시
+    # Show message box
     messagebox.showinfo(title, message)
 
     root.destroy()
 
 def show_custom_popup(title, message, duration=3):
-    """자동으로 사라지는 커스텀 팝업"""
+    """Custom popup that disappears automatically"""
     root = tk.Tk()
     root.title(title)
 
-    # 창 크기 및 위치 설정
+    # Set window size and position
     width = 300
     height = 100
     screen_width = root.winfo_screenwidth()
     screen_height = root.winfo_screenheight()
-    x = screen_width - width - 20  # 우측 하단
+    x = screen_width - width - 20  # bottom-right
     y = screen_height - height - 60
 
     root.geometry(f'{width}x{height}+{x}+{y}')
-    root.attributes('-topmost', True)  # 항상 위에
-    root.overrideredirect(True)  # 타이틀바 제거
+    root.attributes('-topmost', True)  # always on top
+    root.overrideredirect(True)  # remove title bar
 
-    # 배경색
+    # background color
     root.configure(bg='#2d2d2d')
 
-    # 메시지 레이블
+    # message label
     label = tk.Label(
         root,
         text=message,
@@ -48,7 +48,7 @@ def show_custom_popup(title, message, duration=3):
     )
     label.pack(expand=True, pady=20, padx=10)
 
-    # duration초 후 자동으로 닫기
+    # auto-close after duration seconds
     root.after(duration * 1000, root.destroy)
 
     root.mainloop()

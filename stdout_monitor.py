@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Stdout Monitor - 현재 터미널의 출력을 모니터링하여 자동 승인
-sys.stdout을 후킹하여 출력 내용 감지
+Stdout Monitor - monitors the current terminal's output for auto-approval
+Hooks sys.stdout to detect output content
 """
 import sys
 import time
@@ -11,24 +11,24 @@ import win32con
 from collections import deque
 import io
 
-# UTF-8 설정
+# UTF-8 setup
 if sys.platform == 'win32':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
 class StdoutMonitor:
-    """Stdout 모니터링 및 자동 응답"""
+    """Stdout monitoring and auto-response"""
 
     def __init__(self):
         self.running = False
         self.monitor_thread = None
         self.approval_count = 0
 
-        # 최근 출력 라인 저장 (마지막 50줄)
+        # Store recent output lines (last 50 lines)
         self.recent_lines = deque(maxlen=50)
         self.line_lock = threading.Lock()
 
-        # 승인 패턴
+        # Approval patterns
         self.approval_patterns = [
             '1. Yes',
             '1. Approve',
@@ -38,24 +38,24 @@ class StdoutMonitor:
             'Select (1)',
         ]
 
-        # 중복 방지
+        # Duplicate prevention
         self.last_input_time = 0
         self.min_input_interval = 2
 
-        # 원본 stdout 저장
+        # Store the original stdout
         self.original_stdout = sys.stdout
         self.original_stderr = sys.stderr
 
     def write_line(self, text):
-        """라인 저장"""
+        """Store a line"""
         if text and text.strip():
             with self.line_lock:
                 self.recent_lines.append(text)
 
     def check_approval_pattern(self):
-        """최근 출력에서 승인 패턴 확인"""
+        """Check recent output for an approval pattern"""
         with self.line_lock:
-            # 최근 10줄만 확인
+            # Only check the last 10 lines
             recent_text = '\n'.join(list(self.recent_lines)[-10:])
 
         for pattern in self.approval_patterns:
@@ -64,13 +64,13 @@ class StdoutMonitor:
         return False
 
     def send_approval_input(self):
-        """'1' 입력 (Enter 없음)"""
+        """Send '1' (no Enter)"""
         try:
             print("\n✅ 승인 패턴 감지! '1' 입력 중...")
 
             time.sleep(0.2)
 
-            # '1' 키 입력
+            # Send the '1' key
             win32api.keybd_event(ord('1'), 0, 0, 0)
             time.sleep(0.05)
             win32api.keybd_event(ord('1'), 0, win32con.KEYEVENTF_KEYUP, 0)
@@ -86,17 +86,17 @@ class StdoutMonitor:
             return False
 
     def monitor_loop(self):
-        """모니터링 루프"""
+        """Monitoring loop"""
         print("🔍 Stdout 모니터링 시작...")
 
         while self.running:
             try:
-                # 중복 방지
+                # Duplicate prevention
                 if time.time() - self.last_input_time < self.min_input_interval:
                     time.sleep(0.5)
                     continue
 
-                # 승인 패턴 확인
+                # Check for an approval pattern
                 if self.check_approval_pattern():
                     self.send_approval_input()
 
@@ -107,7 +107,7 @@ class StdoutMonitor:
                 time.sleep(1)
 
     def start(self):
-        """모니터링 시작"""
+        """Start monitoring"""
         if self.running:
             return
 
@@ -119,7 +119,7 @@ class StdoutMonitor:
         print("✅ Stdout Monitor 시작됨")
 
     def stop(self):
-        """모니터링 중지"""
+        """Stop monitoring"""
         self.running = False
         if self.monitor_thread:
             self.monitor_thread.join(timeout=2)
@@ -134,9 +134,9 @@ class MonitoredStdout:
         self.monitor = monitor
 
     def write(self, text):
-        # 원본에 쓰기
+        # Write to the original
         self.original.write(text)
-        # 모니터에 저장
+        # Store in the monitor
         self.monitor.write_line(text)
 
     def flush(self):
@@ -146,11 +146,11 @@ class MonitoredStdout:
         return getattr(self.original, name)
 
 
-# 전역 모니터 인스턴스
+# Global monitor instance
 _monitor = None
 
 def start_monitoring():
-    """모니터링 시작"""
+    """Start monitoring"""
     global _monitor
 
     if _monitor is not None:
@@ -159,25 +159,25 @@ def start_monitoring():
 
     _monitor = StdoutMonitor()
 
-    # stdout 후킹
+    # Hook stdout
     sys.stdout = MonitoredStdout(sys.stdout, _monitor)
 
-    # 모니터링 시작
+    # Start monitoring
     _monitor.start()
 
     return _monitor
 
 def stop_monitoring():
-    """모니터링 중지"""
+    """Stop monitoring"""
     global _monitor
 
     if _monitor is None:
         return
 
-    # stdout 복원
+    # Restore stdout
     sys.stdout = _monitor.original_stdout
 
-    # 모니터링 중지
+    # Stop monitoring
     _monitor.stop()
     _monitor = None
 
@@ -198,7 +198,7 @@ if __name__ == "__main__":
     print("=" * 70)
     print()
 
-    # 테스트
+    # Test
     monitor = start_monitoring()
 
     print("테스트: 승인 패턴 출력")

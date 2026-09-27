@@ -1,5 +1,5 @@
 """
-win10toast 간단 테스트
+win10toast simple test
 """
 from win10toast import ToastNotifier
 import time
@@ -10,7 +10,7 @@ toaster = ToastNotifier()
 
 print("알림 표시 중... (우측 하단 확인!)")
 
-# 알림 표시 (5초간)
+# Show notification (for 5 seconds)
 toaster.show_toast(
     "Test Notification",
     "우측 하단에서 올라오는 알림이 보이나요?",

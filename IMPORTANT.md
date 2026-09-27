@@ -1,22 +1,22 @@
-# 중요: 입력 방식
+# Important: Input Method
 
-## ⚠️ "1"만 입력하고 Enter는 절대 누르지 않습니다!
+## ⚠️ Only type "1" — never press Enter!
 
-Claude Code 승인 프롬프트는 **"1"을 입력하면 자동으로 선택이 완료**됩니다.
+Claude Code approval prompts **complete the selection automatically as soon as "1" is typed**.
 
-Enter를 누르면 메시지를 보내는 것이 되므로 의도하지 않은 동작이 발생합니다.
+Pressing Enter is treated as sending a message, which causes unintended behavior.
 
 ```
-✅ 올바른 방식: "1" 입력만
-❌ 잘못된 방식: "1" + Enter
+✅ Correct: type "1" only
+❌ Wrong: "1" + Enter
 ```
 
-## 수정된 파일
+## Modified files
 
-- `simple_auto_approver.py`: "1"만 입력하도록 수정 완료
-  - 161-165줄: 메인 승인 로직
-  - 180-184줄: PyCharm 탭 순회 로직
+- `simple_auto_approver.py`: updated to type "1" only
+  - Lines 161-165: main approval logic
+  - Lines 180-184: PyCharm tab traversal logic
 
-## 참고
+## Note
 
-이 프로젝트의 모든 자동 승인 로직은 "1" 키만 입력하고 Enter는 누르지 않도록 구현되어 있습니다.
+All auto-approval logic in this project is implemented to type only the "1" key and never press Enter.

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Screen OCR Monitor
-화면 캡처 + OCR로 다른 터미널의 출력을 읽어 자동 승인
+Reads other terminals' output via screen capture + OCR and auto-approves
 """
 import sys
 import time
@@ -15,17 +15,17 @@ import pytesseract
 import io
 from pathlib import Path
 
-# UTF-8 설정
+# UTF-8 setup
 if sys.platform == 'win32':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
-# Tesseract 경로 설정 (필요시 수정)
+# Tesseract path (edit if needed)
 # pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 
 class ScreenOCRMonitor:
-    """화면 OCR 기반 터미널 모니터링"""
+    """Screen-OCR-based terminal monitoring"""
 
     def __init__(self):
         self.running = False
@@ -33,7 +33,7 @@ class ScreenOCRMonitor:
         self.approval_count = 0
         self.current_hwnd = None
 
-        # 승인 패턴
+        # Approval patterns
         self.approval_patterns = [
             '1. Yes',
             '1. Approve',
@@ -44,21 +44,21 @@ class ScreenOCRMonitor:
             'option (1)',
         ]
 
-        # 터미널 패턴
+        # Terminal patterns
         self.terminal_patterns = ['MINGW', 'bash', 'Claude', 'Terminal']
 
-        # 중복 방지
+        # Duplicate prevention
         self.last_input_time = 0
         self.min_input_interval = 3
 
-        # 현재 창
+        # Current window
         try:
             self.current_hwnd = win32console.GetConsoleWindow()
         except:
             self.current_hwnd = None
 
     def find_target_terminals(self):
-        """대상 터미널 창 찾기"""
+        """Find target terminal windows"""
         def callback(hwnd, windows):
             if win32gui.IsWindowVisible(hwnd):
                 title = win32gui.GetWindowText(hwnd)
@@ -75,27 +75,27 @@ class ScreenOCRMonitor:
         return windows
 
     def capture_window(self, hwnd):
-        """창 스크린샷 캡처"""
+        """Capture a window screenshot"""
         try:
-            # 창 크기 가져오기
+            # Get window size
             left, top, right, bottom = win32gui.GetWindowRect(hwnd)
             width = right - left
             height = bottom - top
 
-            # 디바이스 컨텍스트
+            # Device context
             hwndDC = win32gui.GetWindowDC(hwnd)
             mfcDC = win32ui.CreateDCFromHandle(hwndDC)
             saveDC = mfcDC.CreateCompatibleDC()
 
-            # 비트맵 생성
+            # Create bitmap
             saveBitMap = win32ui.CreateBitmap()
             saveBitMap.CreateCompatibleBitmap(mfcDC, width, height)
             saveDC.SelectObject(saveBitMap)
 
-            # 화면 복사
+            # Copy screen
             saveDC.BitBlt((0, 0), (width, height), mfcDC, (0, 0), win32con.SRCCOPY)
 
-            # PIL Image로 변환
+            # Convert to PIL Image
             bmpinfo = saveBitMap.GetInfo()
             bmpstr = saveBitMap.GetBitmapBits(True)
             img = Image.frombuffer(
@@ -104,7 +104,7 @@ class ScreenOCRMonitor:
                 bmpstr, 'raw', 'BGRX', 0, 1
             )
 
-            # 정리
+            # Cleanup
             win32gui.DeleteObject(saveBitMap.GetHandle())
             saveDC.DeleteDC()
             mfcDC.DeleteDC()
@@ -117,14 +117,14 @@ class ScreenOCRMonitor:
             return None
 
     def extract_text_from_image(self, img):
-        """이미지에서 텍스트 추출 (OCR)"""
+        """Extract text from image (OCR)"""
         try:
-            # 이미지 하단 일부만 (최근 출력 부분)
+            # Only the bottom part of the image (most recent output)
             width, height = img.size
-            # 하단 30% 영역만 크롭
+            # Crop only the bottom 30% region
             bottom_region = img.crop((0, int(height * 0.7), width, height))
 
-            # OCR 수행
+            # Run OCR
             text = pytesseract.image_to_string(bottom_region, lang='eng')
             return text
 
@@ -133,7 +133,7 @@ class ScreenOCRMonitor:
             return ""
 
     def check_approval_pattern(self, text):
-        """텍스트에서 승인 패턴 확인"""
+        """Check text for an approval pattern"""
         if not text:
             return False
 
@@ -146,14 +146,14 @@ class ScreenOCRMonitor:
         return False
 
     def send_input_to_terminal(self, terminal):
-        """터미널에 '1' 입력"""
+        """Send '1' to the terminal"""
         try:
             hwnd = terminal['hwnd']
             title = terminal['title']
 
             print(f"\n📤 '{title}'에 '1' 입력 중...")
 
-            # 창 활성화
+            # Activate window
             try:
                 win32gui.SetForegroundWindow(hwnd)
             except:
@@ -161,7 +161,7 @@ class ScreenOCRMonitor:
 
             time.sleep(0.3)
 
-            # '1' 입력
+            # Send '1' only
             win32api.keybd_event(ord('1'), 0, 0, 0)
             time.sleep(0.05)
             win32api.keybd_event(ord('1'), 0, win32con.KEYEVENTF_KEYUP, 0)
@@ -171,7 +171,7 @@ class ScreenOCRMonitor:
 
             print(f"   ✅ '1' 입력 완료! (총 {self.approval_count}회)")
 
-            # 원래 창으로 복귀
+            # Return to the original window
             if self.current_hwnd:
                 time.sleep(0.2)
                 try:
@@ -186,41 +186,41 @@ class ScreenOCRMonitor:
             return False
 
     def monitor_loop(self):
-        """메인 모니터링 루프"""
+        """Main monitoring loop"""
         print("\n🔍 화면 OCR 모니터링 시작...")
 
         while self.running:
             try:
-                # 중복 방지
+                # Duplicate prevention
                 if time.time() - self.last_input_time < self.min_input_interval:
                     time.sleep(1)
                     continue
 
-                # 대상 터미널 찾기
+                # Find target terminals
                 terminals = self.find_target_terminals()
 
                 if not terminals:
                     time.sleep(2)
                     continue
 
-                # 각 터미널 확인
+                # Check each terminal
                 for terminal in terminals:
-                    # 화면 캡처
+                    # Capture screen
                     img = self.capture_window(terminal['hwnd'])
                     if not img:
                         continue
 
-                    # OCR로 텍스트 추출
+                    # Extract text via OCR
                     text = self.extract_text_from_image(img)
 
-                    # 승인 패턴 확인
+                    # Check approval pattern
                     if self.check_approval_pattern(text):
                         print(f"\n📋 승인 요청 감지! (창: {terminal['title']})")
                         print(f"   추출된 텍스트: {text[:100]}...")
                         self.send_input_to_terminal(terminal)
                         break
 
-                time.sleep(2)  # OCR은 느리므로 2초 간격
+                time.sleep(2)  # 2 second interval since OCR is slow
 
             except Exception as e:
                 print(f"❌ 모니터링 오류: {e}")
@@ -229,7 +229,7 @@ class ScreenOCRMonitor:
         print("\n🛑 모니터링 종료")
 
     def start(self):
-        """모니터링 시작"""
+        """Start monitoring"""
         if self.running:
             return
 
@@ -241,7 +241,7 @@ class ScreenOCRMonitor:
         print("✅ Screen OCR Monitor 시작됨")
 
     def stop(self):
-        """모니터링 중지"""
+        """Stop monitoring"""
         self.running = False
         if self.monitor_thread:
             self.monitor_thread.join(timeout=3)
@@ -272,7 +272,7 @@ def main():
     monitor = ScreenOCRMonitor()
 
     try:
-        # 대상 터미널 확인
+        # Check target terminals
         terminals = monitor.find_target_terminals()
         if terminals:
             print("\n📋 모니터링 대상 터미널:")
@@ -283,7 +283,7 @@ def main():
 
         monitor.start()
 
-        # 메인 스레드 대기
+        # Wait on main thread
         while monitor.running:
             time.sleep(1)
 

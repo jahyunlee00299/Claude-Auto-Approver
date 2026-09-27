@@ -1,20 +1,20 @@
 """
-approval_icon.png를 사용한 알림 테스트
+Notification test using approval_icon.png
 """
 import sys
 import os
 
-# 현재 디렉토리를 Python 경로에 추가
+# Add the current directory to the Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from ocr_auto_approver import show_notification_popup
 
 def test_approval_icon():
-    """승인 아이콘이 포함된 알림 테스트"""
+    """Test a notification that includes the approval icon"""
     print("승인 아이콘 알림 테스트를 시작합니다...")
     print("-" * 50)
 
-    # 아이콘 파일 확인
+    # Check for the icon file
     icon_path = os.path.join(os.path.dirname(__file__), "approval_icon.png")
     if os.path.exists(icon_path):
         print(f"[OK] 승인 아이콘 파일 확인: {icon_path}")

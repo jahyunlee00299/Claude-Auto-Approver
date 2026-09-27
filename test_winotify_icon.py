@@ -1,14 +1,14 @@
 """
-winotify의 이미지/아이콘 지원 테스트
+Test winotify's image/icon support
 """
 from winotify import Notification, audio
 import time
 
 def test_winotify_icon():
-    """winotify 아이콘 기능 테스트"""
+    """winotify icon feature test"""
     print("winotify 아이콘 기능 테스트...")
 
-    # 알림 생성
+    # Create notification
     toast = Notification(
         app_id="Claude Auto Approver",
         title="아이콘 테스트",
@@ -16,14 +16,14 @@ def test_winotify_icon():
         duration="long"
     )
 
-    # 아이콘 설정 시도 (다양한 방법)
+    # Try setting the icon (various methods)
     print("\n사용 가능한 메서드:")
     methods = dir(toast)
     for method in methods:
         if 'icon' in method.lower() or 'image' in method.lower():
             print(f"  - {method}")
 
-    # 알림 표시
+    # Show notification
     toast.set_audio(audio.Default, loop=False)
     toast.show()
 

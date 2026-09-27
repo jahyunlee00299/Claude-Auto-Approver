@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Terminal Output Monitor
-터미널 출력을 모니터링하여 승인 요청 패턴 감지 시 자동으로 '1' 입력
+Monitors terminal output and automatically sends '1' when an approval-request pattern is detected
 """
 import sys
 import time
@@ -19,16 +19,16 @@ if sys.platform == 'win32':
 
 
 class TerminalMonitor:
-    """터미널 출력 모니터링 및 자동 승인"""
+    """Terminal output monitoring and auto-approval"""
 
     def __init__(self):
         self.running = False
         self.monitor_thread = None
         self.approval_count = 0
 
-        # 승인 요청 패턴들 (터미널 출력에서 찾을 패턴)
+        # Approval-request patterns (patterns to find in terminal output)
         self.approval_patterns = [
-            # Claude Code 스타일 패턴
+            # Claude Code style patterns
             ['1.', 'Yes'],
             ['1.', 'Approve'],
             ['1.', '승인'],
@@ -36,22 +36,22 @@ class TerminalMonitor:
             ['1.', 'Continue'],
             ['(1)', 'Yes'],
             ['[1]', 'Yes'],
-            # 일반적인 선택 패턴
+            # Generic selection-prompt patterns
             'Select option (1',
             'Choose (1)',
             '1) Yes',
             '1: Yes',
         ]
 
-        # 대상 터미널 창 패턴
+        # Target terminal window patterns
         self.terminal_patterns = ['MINGW', 'bash', 'Claude', 'Terminal', 'cmd', 'PowerShell']
 
-        # 중복 방지
+        # Duplicate prevention
         self.last_input_time = 0
-        self.min_input_interval = 2  # 2초에 한 번만 입력
+        self.min_input_interval = 2  # only send input once every 2 seconds
 
     def find_terminal_windows(self):
-        """모든 터미널 창 찾기"""
+        """Find all terminal windows"""
         def callback(hwnd, windows):
             if win32gui.IsWindowVisible(hwnd):
                 title = win32gui.GetWindowText(hwnd)
@@ -67,26 +67,26 @@ class TerminalMonitor:
         return windows
 
     def read_console_screen_buffer(self):
-        """현재 콘솔 화면 버퍼 읽기 (Windows)"""
+        """Read the current console screen buffer (Windows)"""
         try:
-            # 표준 출력 핸들 가져오기
+            # Get the standard output handle
             console_handle = win32console.GetStdHandle(win32console.STD_OUTPUT_HANDLE)
 
-            # 콘솔 화면 버퍼 정보 가져오기
+            # Get console screen buffer info
             csbi = console_handle.GetConsoleScreenBufferInfo()
 
-            # 현재 커서 위치
+            # Current cursor position
             cursor_pos = csbi['CursorPosition']
 
-            # 마지막 몇 줄만 읽기 (최근 20줄)
+            # Only read the last few lines (recent 20 lines)
             lines_to_read = min(20, cursor_pos.Y + 1)
             start_y = max(0, cursor_pos.Y - lines_to_read + 1)
 
-            # 화면 버퍼에서 텍스트 읽기
+            # Read text from the screen buffer
             buffer_text = []
             for y in range(start_y, cursor_pos.Y + 1):
                 try:
-                    # 한 줄씩 읽기
+                    # Read line by line
                     coord = win32console.PyCOORDType(0, y)
                     size = csbi['Size'].X
                     text = console_handle.ReadConsoleOutputCharacter(size, coord)
@@ -99,7 +99,7 @@ class TerminalMonitor:
             return ""
 
     def check_approval_pattern(self, text):
-        """텍스트에서 승인 패턴 확인"""
+        """Check text for an approval pattern"""
         if not text:
             return False
 
@@ -107,25 +107,25 @@ class TerminalMonitor:
 
         for pattern in self.approval_patterns:
             if isinstance(pattern, list):
-                # 모든 요소가 포함되어 있는지 확인
+                # Check that every element is present
                 if all(p.lower() in text_lower for p in pattern):
                     return True
             else:
-                # 단일 패턴
+                # Single pattern
                 if pattern.lower() in text_lower:
                     return True
 
         return False
 
     def send_input_to_terminal(self, terminal):
-        """터미널에 '1' 입력"""
+        """Send '1' to the terminal"""
         try:
             hwnd = terminal['hwnd']
             title = terminal['title']
 
             print(f"\n📤 '{title}'에 '1' 입력 중...")
 
-            # 창 활성화
+            # Activate the window
             try:
                 win32gui.SetForegroundWindow(hwnd)
             except:
@@ -133,7 +133,7 @@ class TerminalMonitor:
 
             time.sleep(0.2)
 
-            # '1' 입력
+            # Send '1'
             win32api.keybd_event(ord('1'), 0, 0, 0)
             time.sleep(0.05)
             win32api.keybd_event(ord('1'), 0, win32con.KEYEVENTF_KEYUP, 0)
@@ -149,29 +149,29 @@ class TerminalMonitor:
             return False
 
     def monitor_loop(self):
-        """메인 모니터링 루프"""
+        """Main monitoring loop"""
         print("\n🔍 터미널 출력 모니터링 시작...")
 
         while self.running:
             try:
-                # 중복 방지
+                # Duplicate prevention
                 if time.time() - self.last_input_time < self.min_input_interval:
                     time.sleep(0.5)
                     continue
 
-                # 현재 콘솔 화면 읽기
+                # Read the current console screen
                 screen_text = self.read_console_screen_buffer()
 
-                # 승인 패턴 확인
+                # Check for an approval pattern
                 if self.check_approval_pattern(screen_text):
                     print("\n📋 승인 요청 패턴 감지!")
-                    print(f"   감지된 텍스트:\n{screen_text[-200:]}")  # 마지막 200자만
+                    print(f"   감지된 텍스트:\n{screen_text[-200:]}")  # last 200 chars only
 
-                    # 터미널 창 찾기
+                    # Find terminal windows
                     terminals = self.find_terminal_windows()
 
                     if terminals:
-                        # 첫 번째 터미널에 입력
+                        # Send input to the first terminal
                         self.send_input_to_terminal(terminals[0])
                     else:
                         print("   ⚠️ 대상 터미널을 찾을 수 없습니다")
@@ -185,7 +185,7 @@ class TerminalMonitor:
         print("\n🛑 모니터링 종료")
 
     def start(self):
-        """모니터링 시작"""
+        """Start monitoring"""
         if self.running:
             return
 
@@ -197,7 +197,7 @@ class TerminalMonitor:
         print("✅ Terminal Monitor 시작됨")
 
     def stop(self):
-        """모니터링 중지"""
+        """Stop monitoring"""
         self.running = False
         if self.monitor_thread:
             self.monitor_thread.join(timeout=2)
@@ -226,7 +226,7 @@ def main():
     try:
         monitor.start()
 
-        # 메인 스레드 대기
+        # Wait on the main thread
         while monitor.running:
             time.sleep(1)
 

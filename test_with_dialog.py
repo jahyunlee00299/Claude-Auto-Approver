@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Auto Yes 테스트 - 승인 대화상자를 띄우고 자동 승인 확인
+Auto Yes test - show an approval dialog and verify auto-approval
 """
 import sys
 import time
@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from auto_yes import AutoYesApprover
 
 def show_dialog_after_delay():
-    """3초 후에 대화상자 띄우기"""
+    """Show a dialog after 3 seconds"""
     import tkinter as tk
     from tkinter import messagebox
 
@@ -44,19 +44,19 @@ def main():
     print()
     print("=" * 70)
 
-    # Auto Yes 시작
+    # Start Auto Yes
     approver = AutoYesApprover()
     approver.start()
 
     print("\n✅ Auto Yes Approver 시작됨")
     print("⏰ 3초 후 대화상자가 나타납니다...")
 
-    # 대화상자 스레드 시작
+    # Start the dialog thread
     dialog_thread = threading.Thread(target=show_dialog_after_delay)
     dialog_thread.daemon = True
     dialog_thread.start()
 
-    # 15초 동안 모니터링
+    # Monitor for 15 seconds
     for i in range(15):
         time.sleep(1)
         if i == 14:

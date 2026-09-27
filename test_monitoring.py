@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-모니터링 기능 테스트
+Monitoring feature test
 """
 import sys
 import io
@@ -15,7 +15,7 @@ if sys.platform == 'win32':
 from ocr_auto_approver import OCRAutoApprover
 
 def test_window_capture():
-    """테스트: 윈도우 캡처가 잘 되는지 확인"""
+    """Test: check that window capture works correctly"""
     print("="*80)
     print("윈도우 캡처 테스트")
     print("="*80)
@@ -64,7 +64,7 @@ def test_window_capture():
     print("="*80)
 
 def test_idle_detection():
-    """테스트: 유휴 시간 감지"""
+    """Test: idle time detection"""
     print("="*80)
     print("유휴 시간 감지 테스트")
     print("="*80)
@@ -86,7 +86,7 @@ def test_idle_detection():
     print("="*80)
 
 def test_foreground_window():
-    """테스트: 현재 활성 윈도우 감지"""
+    """Test: current active window detection"""
     print("="*80)
     print("현재 활성 윈도우 감지 테스트")
     print("="*80)

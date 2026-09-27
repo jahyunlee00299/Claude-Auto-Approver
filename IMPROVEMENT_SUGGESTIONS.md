@@ -1,26 +1,26 @@
-# 탭 네비게이션 개선 방안
+# Tab Navigation Improvement Proposals
 
-## 1. 직접 숫자 입력 방식 (가장 간단하고 확실)
+## 1. Direct Numeric Key Input (Simplest and Most Reliable)
 ```python
-# 현재: Alt+Right/Left로 탐색 후 Enter
-# 개선: '2' 키를 직접 입력
+# Current: navigate with Alt+Right/Left, then Enter
+# Improved: type the '2' key directly
 
 win32api.keybd_event(ord('2'), 0, 0, 0)
 time.sleep(0.05)
 win32api.keybd_event(ord('2'), 0, win32con.KEYEVENTF_KEYUP, 0)
 ```
 
-**장점**:
-- OCR 불필요
-- 가장 빠르고 확실
-- "2. Yes, and don't ask again"을 직접 선택
+**Pros**:
+- No OCR needed
+- Fastest and most reliable
+- Selects "2. Yes, and don't ask again" directly
 
-**단점**:
-- 옵션 순서가 바뀌면 문제 발생 가능
+**Cons**:
+- Can break if the option order changes
 
-## 2. Down 키 사용
+## 2. Using the Down Key
 ```python
-# Alt+Right/Left 대신 Down 키로 이동
+# Move with the Down key instead of Alt+Right/Left
 VK_DOWN = 0x28
 
 for i in range(5):
@@ -29,41 +29,41 @@ for i in range(5):
     win32api.keybd_event(VK_DOWN, 0, win32con.KEYEVENTF_KEYUP, 0)
     time.sleep(0.3)
 
-    # OCR로 "don't ask again" 확인
+    # Confirm "don't ask again" via OCR
     new_img = self.capture_window(hwnd)
     new_text = self.extract_text_from_image(new_img)
 
     if "don't ask again" in new_text.lower():
-        # Enter로 선택
+        # Confirm with Enter
         win32api.keybd_event(VK_RETURN, 0, 0, 0)
         time.sleep(0.05)
         win32api.keybd_event(VK_RETURN, 0, win32con.KEYEVENTF_KEYUP, 0)
         break
 ```
 
-## 3. 타이밍 증가
+## 3. Increased Timing
 ```python
-# 현재: time.sleep(0.2)
-# 개선: time.sleep(0.5)
+# Current: time.sleep(0.2)
+# Improved: time.sleep(0.5)
 
-# 각 키 입력 후 충분한 대기 시간 확보
-time.sleep(0.5)  # 화면 업데이트 대기
+# Ensure enough wait time after each key press
+time.sleep(0.5)  # wait for screen update
 ```
 
-## 4. OCR 정확도 향상
+## 4. Improved OCR Accuracy
 ```python
 def extract_text_from_image(self, img):
-    """이미지 전처리로 OCR 정확도 향상"""
+    """Preprocess the image to improve OCR accuracy"""
     try:
-        # 그레이스케일 변환
+        # Convert to grayscale
         img = img.convert('L')
 
-        # 대비 증가
+        # Increase contrast
         from PIL import ImageEnhance
         enhancer = ImageEnhance.Contrast(img)
         img = enhancer.enhance(2.0)
 
-        # OCR 수행 (PSM 모드 지정)
+        # Run OCR (with a specific PSM mode)
         custom_config = r'--oem 3 --psm 6'
         text = pytesseract.image_to_string(img, lang='eng', config=custom_config)
 
@@ -72,63 +72,63 @@ def extract_text_from_image(self, img):
         return ""
 ```
 
-## 5. 더 정확한 화면 변화 감지
+## 5. More Accurate Screen Change Detection
 ```python
 def detect_screen_change(self, text1, text2):
-    """텍스트 길이와 특징으로 변화 감지"""
-    # 길이 차이가 10% 이상이면 변화로 인정
+    """Detect changes using text length and characteristic differences"""
+    # Treat as changed if the length difference exceeds 10%
     if abs(len(text1) - len(text2)) > len(text1) * 0.1:
         return True
 
-    # 특정 키워드 변화 확인
+    # Check for keyword changes
     keywords1 = set(text1.lower().split())
     keywords2 = set(text2.lower().split())
 
-    # 차집합이 20% 이상이면 변화로 인정
+    # Treat as changed if the symmetric difference exceeds 20%
     diff = len(keywords1.symmetric_difference(keywords2))
     total = len(keywords1.union(keywords2))
 
     return diff / total > 0.2 if total > 0 else False
 ```
 
-## 6. 시도 횟수 증가 및 안전장치
+## 6. Increased Attempt Count and Safeguards
 ```python
-MAX_ATTEMPTS = 10  # 5에서 10으로 증가
-MAX_TOTAL_TIME = 30  # 30초 제한
+MAX_ATTEMPTS = 10  # increased from 5
+MAX_TOTAL_TIME = 30  # 30-second limit
 
 start_time = time.time()
 
 for i in range(MAX_ATTEMPTS):
-    # 시간 제한 체크
+    # Check the time limit
     if time.time() - start_time > MAX_TOTAL_TIME:
         print(f"[TIMEOUT] Navigation timeout after {MAX_TOTAL_TIME}s")
         break
 
-    # 네비게이션 로직...
+    # Navigation logic...
 ```
 
-## 7. 하이브리드 접근법 (추천)
+## 7. Hybrid Approach (Recommended)
 ```python
 def smart_navigate(self, hwnd):
-    """하이브리드 접근: 먼저 '2' 시도, 실패하면 탐색"""
+    """Hybrid approach: try '2' first, then fall back to navigation"""
 
-    # 1단계: '2' 직접 입력 시도
+    # Step 1: try direct '2' input
     print("[INFO] Trying direct '2' input...")
     win32api.keybd_event(ord('2'), 0, 0, 0)
     time.sleep(0.05)
     win32api.keybd_event(ord('2'), 0, win32con.KEYEVENTF_KEYUP, 0)
     time.sleep(0.3)
 
-    # 화면 캡처하여 확인
+    # Capture the screen to check
     img = self.capture_window(hwnd)
     text = self.extract_text_from_image(img)
 
-    # 성공 확인 (대화상자가 사라졌는지)
+    # Confirm success (whether the dialog disappeared)
     if not self.check_approval_pattern(text):
         print("[SUCCESS] Direct input worked!")
         return True
 
-    # 2단계: 실패하면 Down 키로 탐색
+    # Step 2: fall back to Down-key navigation
     print("[INFO] Direct input failed, trying Down key navigation...")
     VK_DOWN = 0x28
     VK_RETURN = 0x0D
@@ -137,7 +137,7 @@ def smart_navigate(self, hwnd):
         win32api.keybd_event(VK_DOWN, 0, 0, 0)
         time.sleep(0.05)
         win32api.keybd_event(VK_DOWN, 0, win32con.KEYEVENTF_KEYUP, 0)
-        time.sleep(0.5)  # 충분한 대기
+        time.sleep(0.5)  # wait long enough
 
         img = self.capture_window(hwnd)
         text = self.extract_text_from_image(img)
@@ -149,29 +149,29 @@ def smart_navigate(self, hwnd):
             win32api.keybd_event(VK_RETURN, 0, win32con.KEYEVENTF_KEYUP, 0)
             return True
 
-    # 3단계: Alt+Right/Left 탐색 (현재 방식)
+    # Step 3: fall back to Alt+Right/Left navigation (current approach)
     print("[INFO] Trying Alt+Right/Left navigation...")
-    # ... 기존 코드
+    # ... existing code
 
     return False
 ```
 
-## 추천 구현 순서
+## Recommended Implementation Order
 
-1. **즉시 개선 (빠른 테스트)**:
-   - 직접 '2' 입력 시도
-   - 타이밍을 0.2초 → 0.5초로 증가
+1. **Immediate improvements (quick to test)**:
+   - Try direct '2' input
+   - Increase timing from 0.2s to 0.5s
 
-2. **중기 개선**:
-   - Down 키 사용 추가
-   - 하이브리드 접근법 구현
+2. **Medium-term improvements**:
+   - Add Down-key usage
+   - Implement the hybrid approach
 
-3. **장기 개선**:
-   - OCR 전처리 추가
-   - 화면 변화 감지 알고리즘 개선
-   - 시도 횟수 증가 및 타임아웃 추가
+3. **Long-term improvements**:
+   - Add OCR preprocessing
+   - Improve the screen-change detection algorithm
+   - Increase attempt count and add a timeout
 
-## 설정 파일 추가
+## Adding a Configuration File
 ```json
 {
   "navigation": {

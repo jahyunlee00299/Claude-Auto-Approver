@@ -1,32 +1,32 @@
 """
-로고가 포함된 알림 테스트
+Notification test with logo included
 """
 import sys
 import os
 from PIL import Image, ImageDraw, ImageFont
 
-# 현재 디렉토리를 Python 경로에 추가
+# Add current directory to Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 def create_sample_logo():
-    """간단한 샘플 로고 생성"""
-    # 128x128 크기의 이미지 생성
+    """Generate a simple sample logo"""
+    # Create a 128x128 sized image
     img = Image.new('RGBA', (128, 128), (255, 255, 255, 0))
     draw = ImageDraw.Draw(img)
 
-    # 간단한 원과 텍스트 그리기
+    # Draw a simple circle and text
     draw.ellipse([10, 10, 118, 118], fill=(100, 150, 255, 255), outline=(50, 100, 200, 255), width=3)
 
-    # 중앙에 텍스트 추가
+    # Add text in the center
     text = "CA"
     try:
-        # 기본 폰트 사용
+        # Use default font
         font = ImageFont.truetype("arial.ttf", 48)
     except:
-        # 폰트를 찾을 수 없으면 기본 폰트 사용
+        # Fall back to the default font if not found
         font = ImageFont.load_default()
 
-    # 텍스트 위치 계산
+    # Calculate text position
     bbox = draw.textbbox((0, 0), text, font=font)
     text_width = bbox[2] - bbox[0]
     text_height = bbox[3] - bbox[1]
@@ -35,17 +35,17 @@ def create_sample_logo():
 
     draw.text((x, y), text, fill=(255, 255, 255, 255), font=font)
 
-    # 이미지 저장
+    # Save the image
     logo_path = os.path.join(os.path.dirname(__file__), "logo.png")
     img.save(logo_path)
     print(f"샘플 로고가 생성되었습니다: {logo_path}")
     return logo_path
 
 def test_with_logo():
-    """로고가 포함된 알림 테스트"""
+    """Notification test with logo included"""
     from ocr_auto_approver import show_notification_popup
 
-    # 로고 파일 확인
+    # Check logo file
     logo_path = os.path.join(os.path.dirname(__file__), "logo.png")
 
     if not os.path.exists(logo_path):
@@ -54,7 +54,7 @@ def test_with_logo():
     else:
         print(f"기존 로고 파일을 사용합니다: {logo_path}")
 
-    # 알림 표시
+    # Show notification
     print("\n로고가 포함된 알림을 표시합니다...")
     show_notification_popup(
         title="자동 승인 완료",

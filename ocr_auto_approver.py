@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-OCR Auto Approver - OCR로 승인 요청 감지 + 자동 "1" 입력
+OCR Auto Approver - detects approval requests via OCR and auto-inputs "1"
 With System Tray Icon Support
 """
 import sys

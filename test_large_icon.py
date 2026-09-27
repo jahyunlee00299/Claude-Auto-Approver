@@ -1,22 +1,22 @@
 """
-큰 아이콘과 개선된 알림 테스트
+Large icon and improved notification test
 """
 import sys
 import os
 import time
 
-# 현재 디렉토리를 Python 경로에 추가
+# Add current directory to Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from ocr_auto_approver import show_notification_popup
 
 def test_large_icon():
-    """큰 아이콘 알림 테스트"""
+    """Large icon notification test"""
     print("=" * 60)
     print("큰 아이콘 알림 테스트")
     print("=" * 60)
 
-    # 아이콘 파일 확인
+    # Check icon file
     icon_path = os.path.join(os.path.dirname(__file__), "approval_icon.png")
     if os.path.exists(icon_path):
         from PIL import Image
@@ -28,7 +28,7 @@ def test_large_icon():
     print("\n알림 테스트:")
     print("-" * 40)
 
-    # 테스트 1: PowerShell
+    # Test 1: PowerShell
     print("\n1. PowerShell 승인")
     show_notification_popup(
         title="자동 승인 완료",
@@ -38,7 +38,7 @@ def test_large_icon():
     )
     time.sleep(2)
 
-    # 테스트 2: Git Bash
+    # Test 2: Git Bash
     print("\n2. Git Bash 승인")
     show_notification_popup(
         title="자동 승인 완료",

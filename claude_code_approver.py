@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Claude Code Auto Approver
-Git Bash 창에서 '1'을 누르면 자동으로 Claude Code의 승인 대화상자를 처리
+Pressing '1' in the Git Bash window automatically handles Claude Code's approval dialog
 """
 
 import sys
@@ -14,7 +14,7 @@ import win32console
 import msvcrt
 from pathlib import Path
 
-# UTF-8 설정
+# UTF-8 setup
 import io
 if sys.platform == 'win32':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
@@ -28,7 +28,7 @@ from src.utils.config import load_config
 
 
 class ClaudeCodeApprover:
-    """Claude Code 승인을 처리하는 메인 클래스"""
+    """Main class that handles Claude Code approvals"""
 
     def __init__(self):
         self.running = False
@@ -36,26 +36,26 @@ class ClaudeCodeApprover:
         self.monitor_thread = None
         self.claude_window = None
 
-        # 설정 로드
+        # Load config
         config = load_config()
         config['safe_mode'] = False
         config['delay_seconds'] = 0.2
 
-        # Claude Code 창 패턴
+        # Claude Code window patterns
         self.claude_patterns = [
             'MINGW64', 'bash', 'Claude', 'Code', 'Terminal'
         ]
 
     def find_claude_window(self):
-        """Claude Code가 실행 중인 Git Bash 창 찾기"""
+        """Find the Git Bash window where Claude Code is running"""
         def enum_windows_callback(hwnd, windows):
             if win32gui.IsWindowVisible(hwnd):
                 window_text = win32gui.GetWindowText(hwnd)
                 if window_text:
-                    # Git Bash나 Terminal 창 찾기
+                    # Find a Git Bash or Terminal window
                     if any(pattern.lower() in window_text.lower()
                            for pattern in self.claude_patterns):
-                        # 현재 창이 아닌 다른 창 찾기
+                        # Find a window other than the current one
                         try:
                             current_window = win32console.GetConsoleWindow()
                             if hwnd != current_window:
@@ -79,14 +79,14 @@ class ClaudeCodeApprover:
         return windows
 
     def send_approval_to_claude(self, target_window):
-        """Claude 창으로 이동하여 '1' + Enter 입력"""
+        """Switch to the Claude window and send '1' + Enter"""
         try:
             hwnd = target_window['hwnd']
             title = target_window['title']
 
             print(f"\n📤 승인 전송 중: '{title}'")
 
-            # 창을 전면으로 가져오기
+            # Bring window to foreground
             try:
                 win32gui.SetForegroundWindow(hwnd)
                 time.sleep(0.3)
@@ -94,7 +94,7 @@ class ClaudeCodeApprover:
                 print(f"   ⚠️ 창 전환 경고 (무시 가능): {e}")
                 time.sleep(0.3)
 
-            # '1' 입력만 (Enter 없음)
+            # Send only '1' (no Enter)
             win32api.keybd_event(ord('1'), 0, 0, 0)
             time.sleep(0.05)
             win32api.keybd_event(ord('1'), 0, win32con.KEYEVENTF_KEYUP, 0)
@@ -107,34 +107,34 @@ class ClaudeCodeApprover:
             return False
 
     def monitor_keyboard(self):
-        """키보드 입력 모니터링 - '1' 키 감지"""
+        """Monitor keyboard input - detect the '1' key"""
         print("\n⌨️  키보드 모니터링 시작...")
         print("   → 이 창에서 '1'을 누르면 Claude 창으로 이동하여 자동 승인합니다")
 
         while self.running:
-            # 키 입력 대기 (논블로킹)
+            # Wait for key input (non-blocking)
             if msvcrt.kbhit():
                 key = msvcrt.getch()
 
-                # '1' 키 감지
+                # Detect the '1' key
                 if key == b'1':
                     print("\n🔑 '1' 키 감지!")
 
-                    # Claude 창 찾기
+                    # Find the Claude window
                     claude_windows = self.find_claude_window()
 
                     if not claude_windows:
                         print("   ⚠️ Claude Code 창을 찾을 수 없습니다")
                         continue
 
-                    # 여러 창이 있으면 선택
+                    # Choose among multiple windows if present
                     if len(claude_windows) > 1:
                         print(f"\n   📋 {len(claude_windows)}개의 터미널 창 발견:")
                         for i, win in enumerate(claude_windows, 1):
                             print(f"      {i}. {win['title']}")
                         print(f"\n   → 첫 번째 창으로 전송합니다: {claude_windows[0]['title']}")
 
-                    # 승인 전송
+                    # Send the approval
                     self.send_approval_to_claude(claude_windows[0])
 
                 elif key == b'q' or key == b'Q':
@@ -145,14 +145,14 @@ class ClaudeCodeApprover:
             time.sleep(0.1)
 
     def start(self):
-        """승인 시스템 시작"""
+        """Start the approval system"""
         if self.running:
             print("⚠️ 이미 실행 중입니다")
             return
 
         self.running = True
 
-        # 모니터링 스레드 시작
+        # Start the monitoring thread
         self.monitor_thread = threading.Thread(target=self.monitor_keyboard)
         self.monitor_thread.daemon = True
         self.monitor_thread.start()
@@ -160,7 +160,7 @@ class ClaudeCodeApprover:
         print("✅ Claude Code Auto Approver 시작됨")
 
     def stop(self):
-        """승인 시스템 중지"""
+        """Stop the approval system"""
         self.running = False
         if self.monitor_thread:
             self.monitor_thread.join(timeout=2)
@@ -185,7 +185,7 @@ def main():
     try:
         approver.start()
 
-        # 메인 스레드는 대기
+        # The main thread waits
         while approver.running:
             time.sleep(0.5)
 

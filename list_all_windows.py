@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 """
-모든 창 목록 출력 - 디버그용
+List all windows - for debugging
 """
 import win32gui
 import sys
 import io
 
-# UTF-8 설정
+# UTF-8 setup
 if sys.platform == 'win32':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
     sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
 def list_all_windows():
-    """모든 창 목록 출력"""
+    """List all windows"""
     windows = []
 
     def callback(hwnd, extra):
@@ -37,7 +37,7 @@ def list_all_windows():
     for i, win in enumerate(windows, 1):
         title_lower = win['title'].lower()
 
-        # 관심 있는 키워드 표시
+        # Show keywords of interest
         keywords = ['pycharm', 'catapro', 'bash', 'mingw', 'git', 'claude',
                    'terminal', 'cmd', 'powershell', 'python']
 

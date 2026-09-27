@@ -1,11 +1,11 @@
 """
-시스템 창 필터링 테스트
+System window filtering test
 """
 import win32gui
 import win32con
 
 def get_all_windows():
-    """모든 창 정보 수집"""
+    """Collect info for all windows"""
     windows = []
 
     def callback(hwnd, _):
@@ -38,7 +38,7 @@ def get_all_windows():
     return windows
 
 def is_system_window(hwnd):
-    """시스템 창인지 확인 (ocr_auto_approver.py와 동일한 로직)"""
+    """Check whether it's a system window (same logic as ocr_auto_approver.py)"""
     system_classes = [
         'Windows.UI.Core.CoreWindow',
         'Shell_TrayWnd',
@@ -86,7 +86,7 @@ def main():
 
     print(f"총 {len(windows)}개의 창 발견\n")
 
-    # 시스템 창 분류
+    # Classify system windows
     system_windows = []
     normal_windows = []
 
@@ -99,8 +99,8 @@ def main():
     print("="*80)
     print(f"시스템 창 (필터링됨): {len(system_windows)}개")
     print("="*80)
-    for win in system_windows[:10]:  # 처음 10개만 표시
-        # ASCII 변환
+    for win in system_windows[:10]:  # show only the first 10
+        # Convert to ASCII
         safe_title = win['title'][:50].encode('ascii', 'ignore').decode('ascii')
         safe_class = win['class'].encode('ascii', 'ignore').decode('ascii')
         print(f"제목: {safe_title}")
@@ -114,8 +114,8 @@ def main():
     print("="*80)
     print(f"일반 창 (모니터링 대상): {len(normal_windows)}개")
     print("="*80)
-    for win in normal_windows[:10]:  # 처음 10개만 표시
-        # ASCII 변환
+    for win in normal_windows[:10]:  # show only the first 10
+        # Convert to ASCII
         safe_title = win['title'][:50].encode('ascii', 'ignore').decode('ascii')
         safe_class = win['class'].encode('ascii', 'ignore').decode('ascii')
         print(f"제목: {safe_title}")
