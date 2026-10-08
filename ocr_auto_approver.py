@@ -597,7 +597,7 @@ class OCRAutoApprover:
 
             # Match "1. text", "1) text", "› 1. text" etc.
             for opt_num in ['1', '2', '3']:
-                pattern = rf'(?:^|[^\d]){opt_num}[.)]\s*(.+)'
+                pattern = rf'^[^a-z0-9]*{opt_num}[.)]\s*(.+)'
                 match = re.search(pattern, line_stripped)
                 if match and opt_num not in options:
                     options[opt_num] = match.group(1).strip()
@@ -632,7 +632,7 @@ class OCRAutoApprover:
                 score -= 100
             if 'differently' in opt_text:
                 score -= 100
-            if opt_text.startswith('no') and 'yes' not in opt_text:
+            if re.match(r'(?:no|not)\b', opt_text) and 'yes' not in opt_text:
                 score -= 100  # Starts with "No"
             if 'exit' in opt_text:
                 score -= 100  # "No, exit" - never select exit option
